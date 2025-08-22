@@ -22,7 +22,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Welcome to MapAnalytics! Try typing an address or location to automatically zoom to it on the map.',
+      text: 'Hallo! Ich bin der GVB Chatbot. Wie kann ich dir behilflich sein?',
       timestamp: new Date(),
       isUser: false,
     }
@@ -106,7 +106,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
             const loc = await onLocationRequest(address);
             const locationMessage: Message = {
               id: (Date.now() + 1).toString(),
-              text: loc.success 
+              text: loc.success
                 ? `📍 Found "${loc.location}" and zoomed to the location on the map!`
                 : `❌ ${loc.error || 'Could not find that location. Please try a more specific address.'}`,
               timestamp: new Date(),
@@ -138,7 +138,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
             const rainResult = await onRainToggle(enabled);
             const rainMessage: Message = {
               id: (Date.now() + 1).toString(),
-              text: rainResult.success 
+              text: rainResult.success
                 ? `🌧️ Rain effect ${enabled ? 'enabled' : 'disabled'} on the map!`
                 : `❌ ${rainResult.error || 'Could not toggle rain effect.'}`,
               timestamp: new Date(),
@@ -233,26 +233,24 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                   </div>
                 )}
                 <div
-                className={`rounded-lg p-3 ${
-                  message.isUser
+                  className={`rounded-lg p-3 ${message.isUser
                     ? 'bg-primary text-primary-foreground ml-8'
                     : 'bg-message-bubble text-message-text'
-                }`}
-              >
-                <p className="text-sm leading-relaxed">{message.text}</p>
-                <div className="mt-1 flex items-center justify-between">
-                  <span className={`text-xs ${
-                    message.isUser 
-                      ? 'text-primary-foreground/70' 
+                    }`}
+                >
+                  <p className="text-sm leading-relaxed">{message.text}</p>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className={`text-xs ${message.isUser
+                      ? 'text-primary-foreground/70'
                       : 'text-message-text/70'
-                  }`}>
-                    {message.timestamp.toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </span>
+                      }`}>
+                      {message.timestamp.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
                 </div>
-              </div>
               </div>
             </div>
           ))}
@@ -269,8 +267,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
             placeholder="Try typing an address like '123 Main St, New York'..."
             className="flex-1 bg-input border-border text-foreground placeholder:text-muted-foreground"
           />
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             size="icon"
             className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
             disabled={!inputMessage.trim() || isLoading}
