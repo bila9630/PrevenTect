@@ -61,7 +61,19 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				'map-glow': 'hsl(var(--map-glow))',
+				'chat-background': 'hsl(var(--chat-background))',
+				'message-bubble': 'hsl(var(--message-bubble))',
+				'message-text': 'hsl(var(--message-text))'
+			},
+			backgroundImage: {
+				'gradient-space': 'var(--gradient-space)',
+				'gradient-glow': 'var(--gradient-glow)'
+			},
+			transitionTimingFunction: {
+				'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+				'glow': 'cubic-bezier(0.4, 0, 0.2, 1)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
