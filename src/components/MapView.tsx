@@ -1,66 +1,15 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-interface MapViewProps {
-  onTokenSet?: (token: string) => void;
-}
-
-interface MapViewRef {
-  zoomToLocation: (lng: number, lat: number, placeName?: string) => void;
-}
-
-const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
+const MapView = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState('');
   const [isTokenSet, setIsTokenSet] = useState(false);
-
-  const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
-
-  // Expose map controls to parent component
-  useImperativeHandle(ref, () => ({
-    zoomToLocation: (lng: number, lat: number, placeName?: string) => {
-      if (!map.current) return;
-
-      // Remove previous marker if exists
-      if (currentMarker) {
-        currentMarker.remove();
-      }
-
-      // Add new marker
-      const marker = new mapboxgl.Marker({
-        color: 'hsl(195, 100%, 60%)',
-        scale: 1.2
-      })
-        .setLngLat([lng, lat])
-        .addTo(map.current);
-
-      setCurrentMarker(marker);
-
-      // Fly to location
-      map.current.flyTo({
-        center: [lng, lat],
-        zoom: 12,
-        duration: 2000,
-        essential: true
-      });
-
-      // Optional popup with place name
-      if (placeName) {
-        const popup = new mapboxgl.Popup({ offset: 25 })
-          .setLngLat([lng, lat])
-          .setHTML(`<div style="color: #000; font-weight: 500;">${placeName}</div>`)
-          .addTo(map.current);
-
-        // Auto-close popup after 5 seconds
-        setTimeout(() => popup.remove(), 5000);
-      }
-    }
-  }));
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {
@@ -156,11 +105,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       });
 
       // Start the globe spinning
-
-      // Notify parent that token is set
-      if (onTokenSet) {
-        onTokenSet(mapboxToken);
-      }
       spinGlobe();
 
     } catch (error) {
@@ -180,12 +124,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   useEffect(() => {
     return () => {
-      if (currentMarker) {
-        currentMarker.remove();
-      }
       map.current?.remove();
     };
-  }, [currentMarker]);
+  }, []);
 
   if (!isTokenSet) {
     return (
@@ -254,8 +195,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       </div>
     </div>
   );
-});
-
-MapView.displayName = 'MapView';
+};
 
 export default MapView;
