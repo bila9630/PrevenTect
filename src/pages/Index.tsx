@@ -21,7 +21,7 @@ const Index = () => {
         const placeName = data.features[0].place_name;
         
         // Zoom to the location
-        mapRef.current.zoomToLocation(lng, lat, placeName);
+        mapRef.current.flyTo([lng, lat], 12);
         
         return { success: true, location: placeName, coordinates: [lng, lat] };
       } else {

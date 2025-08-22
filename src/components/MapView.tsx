@@ -10,7 +10,7 @@ interface MapViewProps {
 }
 
 interface MapViewRef {
-  zoomToLocation: (lng: number, lat: number, placeName?: string) => void;
+  flyTo: (coordinates: [number, number], zoom?: number) => void;
 }
 
 const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
@@ -32,59 +32,16 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   // Expose map controls to parent component
   useImperativeHandle(ref, () => ({
-    zoomToLocation: (lng: number, lat: number, placeName?: string) => {
-      if (!map.current) return;
-
-      console.log('Zooming to location:', lng, lat, placeName);
-
-      // Remove previous marker if exists
-      if (currentMarker) {
-        currentMarker.remove();
-      }
-
-      // Add new marker
-      const marker = new mapboxgl.Marker({
-        color: 'hsl(195, 100%, 60%)',
-        scale: 1.2
-      })
-        .setLngLat([lng, lat])
-        .addTo(map.current);
-
-      setCurrentMarker(marker);
-
-      // Use easeTo instead of flyTo for more reliable zooming
-      // and ensure proper projection handling
-      map.current.easeTo({
-        center: [lng, lat],
-        zoom: 14,
-        pitch: 0,
-        bearing: 0,
-        duration: 1500,
-        essential: true
-      });
-
-      // Optional popup with place name
-      if (placeName) {
-        // Add popup after a short delay to ensure map has moved
-        setTimeout(() => {
-          if (!map.current) return;
-          
-          const popup = new mapboxgl.Popup({ 
-            offset: 25,
-            closeButton: true,
-            closeOnClick: true,
-            className: 'custom-popup'
-          })
-            .setLngLat([lng, lat])
-            .setHTML(`<div style="color: #000; font-weight: 500; padding: 4px;">${placeName}</div>`)
-            .addTo(map.current);
-
-          // Auto-close popup after 8 seconds
-          setTimeout(() => popup.remove(), 8000);
-        }, 800);
+    flyTo: (coordinates: [number, number], zoom = 12) => {
+      if (map.current) {
+        map.current.flyTo({
+          center: coordinates,
+          zoom: zoom,
+          duration: 2000
+        });
       }
     }
-  }));
+  }), []);
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {
@@ -97,15 +54,14 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       mapboxgl.accessToken = mapboxToken;
       console.log('Mapbox token set successfully');
       
-      // Initialize map with globe projection and deep space theme
+      // Initialize map with globe projection
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        style: 'mapbox://styles/mapbox/light-v11',
         projection: 'globe' as any,
-        zoom: 1.5,
-        center: [30, 15],
-        pitch: 0,
-        bearing: 0,
+        zoom: 2,
+        center: [0, 20],
+        pitch: 30,
       });
 
       console.log('Map instance created successfully');
@@ -121,25 +77,17 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       // Disable scroll zoom for smoother globe experience
       map.current.scrollZoom.disable();
 
-      // Add atmosphere and fog effects for the globe
+      // Add atmosphere and fog effects
       map.current.on('style.load', () => {
-        if (!map.current) return;
-        
-        // Set fog and atmosphere for space-like appearance
-        map.current.setFog({
-          color: 'hsl(195, 100%, 70%)',
-          'high-color': 'hsl(220, 25%, 8%)', 
-          'horizon-blend': 0.1,
-          'space-color': 'hsl(220, 30%, 5%)',
-          'star-intensity': 0.8
+        map.current?.setFog({
+          color: 'rgb(255, 255, 255)',
+          'high-color': 'rgb(245, 245, 255)',
+          'horizon-blend': 0.3,
         });
-
-        // Add globe glow effect
-        map.current.setPaintProperty('background', 'background-color', 'hsl(220, 30%, 5%)');
       });
 
       // Globe rotation animation
-      const secondsPerRevolution = 240;
+      const secondsPerRevolution = 300;
       const maxSpinZoom = 5;
       const slowSpinZoom = 3;
       let userInteracting = false;
