@@ -4,13 +4,13 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, MapPin, KeyRound } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import OpenAI from 'openai';
 
 interface Message {
   id: string;
   text: string;
   timestamp: Date;
   isUser: boolean;
-  isLocationRequest?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -66,23 +66,20 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
     toast({ description: 'OpenAI API key cleared.' });
   };
 
-  // Function to detect if message looks like a location/address
-  const detectLocation = (text: string): boolean => {
-    const locationKeywords = [
-      'street', 'avenue', 'road', 'boulevard', 'drive', 'lane', 'way', 'place', 'court',
-      'city', 'town', 'village', 'state', 'country', 'zip', 'postal',
-      'address', 'location', 'where is', 'find', 'show me', 'go to', 'navigate to'
-    ];
-    
-    const hasNumbers = /\d/.test(text);
-    const hasLocationKeywords = locationKeywords.some(keyword => 
-      text.toLowerCase().includes(keyword)
-    );
-    
-    // Simple heuristic: if it has numbers and location keywords, or common address patterns
-    return hasLocationKeywords || 
-           /\d+\s+[A-Za-z\s]+(?:street|avenue|road|blvd|drive|lane|way|st|ave|rd|dr)/i.test(text) ||
-           /^[^,]+,\s*[^,]+/.test(text); // Pattern like "City, State" or "Street, City"
+  // Function definition for OpenAI to call when user wants to zoom to a location
+  const zoomToLocationFunction = {
+    name: "zoom_to_location",
+    description: "Zoom the map to a specific location or address",
+    parameters: {
+      type: "object",
+      properties: {
+        address: {
+          type: "string",
+          description: "The address or location to zoom to (e.g., 'Paris, France', '123 Main St, New York')"
+        }
+      },
+      required: ["address"]
+    }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -90,7 +87,6 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
     if (!inputMessage.trim() || isLoading) return;
 
     const messageText = inputMessage.trim();
-    const isLocationRequest = detectLocation(messageText);
 
     // Add user message
     const userMessage: Message = {
@@ -98,73 +94,75 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
       text: messageText,
       timestamp: new Date(),
       isUser: true,
-      isLocationRequest,
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
 
-    // Handle location requests
-    if (isLocationRequest && onLocationRequest) {
-      try {
-        const result = await onLocationRequest(messageText);
-        
-        const responseMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: result.success 
-            ? `📍 Found "${result.location}" and zoomed to the location on the map!`
-            : `❌ ${result.error || 'Could not find that location. Please try a more specific address.'}`,
-          timestamp: new Date(),
-          isUser: false,
-        };
-        
-        setMessages(prev => [...prev, responseMessage]);
-      } catch (error) {
-        const errorMessage: Message = {
-          id: (Date.now() + 2).toString(),
-          text: "❌ Sorry, I had trouble finding that location. Please try again.",
-          timestamp: new Date(),
-          isUser: false,
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      }
-    } else {
-      // OpenAI chat completion for non-location messages
-      if (!apiKey) {
-        const infoMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: "To enable AI replies, set your OpenAI API key via the 'API key' button above.",
-          timestamp: new Date(),
-          isUser: false,
-        };
-        setMessages(prev => [...prev, infoMessage]);
-        return;
-      }
+    if (!apiKey) {
+      const infoMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "To enable AI replies, set your OpenAI API key via the 'API key' button above.",
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, infoMessage]);
+      return;
+    }
 
-      setIsLoading(true);
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
+    setIsLoading(true);
+    try {
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true
+      });
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4.1',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are Mapalytics, a helpful map and geospatial assistant. Be precise and concise. When users mention locations, addresses, or want to see places on a map, use the zoom_to_location function.' 
           },
-          body: JSON.stringify({
-            model: 'gpt-4.1',
-            messages: [
-              { role: 'system', content: 'You are Mapalytics, a helpful map and geospatial assistant. Be precise and concise.' },
-              { role: 'user', content: messageText }
-            ],
-            temperature: 0.3
-          }),
-        });
+          { role: 'user', content: messageText }
+        ],
+        functions: [zoomToLocationFunction],
+        function_call: "auto",
+        temperature: 0.3
+      });
 
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data?.error?.message || 'Failed to get a response from OpenAI');
+      const message = response.choices[0].message;
+
+      // Check if OpenAI wants to call the zoom function
+      if (message.function_call && message.function_call.name === "zoom_to_location" && onLocationRequest) {
+        const args = JSON.parse(message.function_call.arguments);
+        const address = args.address;
+
+        try {
+          const result = await onLocationRequest(address);
+          
+          const locationMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: result.success 
+              ? `📍 Found "${result.location}" and zoomed to the location on the map!`
+              : `❌ ${result.error || 'Could not find that location. Please try a more specific address.'}`,
+            timestamp: new Date(),
+            isUser: false,
+          };
+          
+          setMessages(prev => [...prev, locationMessage]);
+        } catch (error) {
+          const errorMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            text: "❌ Sorry, I had trouble finding that location. Please try again.",
+            timestamp: new Date(),
+            isUser: false,
+          };
+          setMessages(prev => [...prev, errorMessage]);
         }
-
-        const content: string = data?.choices?.[0]?.message?.content?.trim() || "I'm not sure how to answer that.";
+      } else {
+        // Regular AI response
+        const content: string = message.content?.trim() || "I'm not sure how to answer that.";
         const aiResponse: Message = {
           id: (Date.now() + 1).toString(),
           text: content,
@@ -172,17 +170,17 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
           isUser: false,
         };
         setMessages(prev => [...prev, aiResponse]);
-      } catch (err: any) {
-        const errorMessage: Message = {
-          id: (Date.now() + 2).toString(),
-          text: `❌ OpenAI error: ${err?.message || 'Unknown error'}`,
-          timestamp: new Date(),
-          isUser: false,
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      } finally {
-        setIsLoading(false);
       }
+    } catch (err: any) {
+      const errorMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        text: `❌ OpenAI error: ${err?.message || 'Unknown error'}`,
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
     }
   };
   return (
@@ -256,9 +254,6 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
                       minute: '2-digit' 
                     })}
                   </span>
-                  {message.isLocationRequest && (
-                    <MapPin className="h-3 w-3 text-primary-foreground/70" />
-                  )}
                 </div>
               </div>
               </div>
