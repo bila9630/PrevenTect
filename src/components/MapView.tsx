@@ -74,8 +74,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
         'top-right'
       );
 
-      // Disable scroll zoom for smoother globe experience
-      map.current.scrollZoom.disable();
+      // Enable scroll zoom for better user interaction
 
       // Add atmosphere and fog effects
       map.current.on('style.load', () => {
