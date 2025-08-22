@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, MapPin } from 'lucide-react';
+import { Send, MapPin, KeyRound } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Message {
   id: string;
@@ -27,6 +28,11 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [apiKeyInput, setApiKeyInput] = useState<string>('');
+  const [showKeyInput, setShowKeyInput] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -35,6 +41,30 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    // Load saved API key from localStorage
+    const k = localStorage.getItem('openai_api_key');
+    if (k) setApiKey(k);
+  }, []);
+
+  const saveApiKey = () => {
+    if (!apiKeyInput.trim()) {
+      toast({ description: 'Please enter an API key.' });
+      return;
+    }
+    localStorage.setItem('openai_api_key', apiKeyInput.trim());
+    setApiKey(apiKeyInput.trim());
+    setApiKeyInput('');
+    setShowKeyInput(false);
+    toast({ description: 'OpenAI API key saved locally.' });
+  };
+
+  const clearApiKey = () => {
+    localStorage.removeItem('openai_api_key');
+    setApiKey('');
+    toast({ description: 'OpenAI API key cleared.' });
+  };
 
   // Function to detect if message looks like a location/address
   const detectLocation = (text: string): boolean => {
@@ -57,7 +87,7 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || isLoading) return;
 
     const messageText = inputMessage.trim();
     const isLocationRequest = detectLocation(messageText);
@@ -99,27 +129,98 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
         setMessages(prev => [...prev, errorMessage]);
       }
     } else {
-      // Simulate regular AI response for non-location messages
-      setTimeout(() => {
+      // OpenAI chat completion for non-location messages
+      if (!apiKey) {
+        const infoMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: "To enable AI replies, set your OpenAI API key via the 'API key' button above.",
+          timestamp: new Date(),
+          isUser: false,
+        };
+        setMessages(prev => [...prev, infoMessage]);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4.1',
+            messages: [
+              { role: 'system', content: 'You are Mapalytics, a helpful map and geospatial assistant. Be precise and concise.' },
+              { role: 'user', content: messageText }
+            ],
+            temperature: 0.3
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error?.message || 'Failed to get a response from OpenAI');
+        }
+
+        const content: string = data?.choices?.[0]?.message?.content?.trim() || "I'm not sure how to answer that.";
         const aiResponse: Message = {
           id: (Date.now() + 1).toString(),
-          text: "Thanks for your message! Try typing an address or location (like '123 Main Street, New York' or 'Paris, France') to see it on the map.",
+          text: content,
           timestamp: new Date(),
           isUser: false,
         };
         setMessages(prev => [...prev, aiResponse]);
-      }, 1000);
+      } catch (err: any) {
+        const errorMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          text: `❌ OpenAI error: ${err?.message || 'Unknown error'}`,
+          timestamp: new Date(),
+          isUser: false,
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
-
   return (
     <div className="h-full flex flex-col bg-chat-background">
       {/* Header */}
       <div className="p-4 border-b border-border bg-card">
-        <h2 className="text-lg font-semibold text-foreground">Chat</h2>
-        <p className="text-sm text-muted-foreground">
-          Ask questions about the map data
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Chat</h2>
+            <p className="text-sm text-muted-foreground">
+              Ask questions about the map data
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowKeyInput((v) => !v)}>
+              <KeyRound className="h-4 w-4 mr-2" />
+              API key
+            </Button>
+            <div className={`text-xs ${apiKey ? 'text-primary' : 'text-muted-foreground'}`}>
+              {apiKey ? 'Ready' : 'Not set'}
+            </div>
+          </div>
+        </div>
+        {showKeyInput && (
+          <div className="mt-3 flex items-center gap-2">
+            <Input
+              type="password"
+              placeholder="sk-..."
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              className="bg-input border-border"
+            />
+            <Button size="sm" onClick={saveApiKey}>Save</Button>
+            {apiKey && (
+              <Button size="sm" variant="secondary" onClick={clearApiKey}>Clear</Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -180,7 +281,7 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
             type="submit" 
             size="icon"
             className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
-            disabled={!inputMessage.trim()}
+            disabled={!inputMessage.trim() || isLoading}
           >
             <Send className="h-4 w-4" />
           </Button>
