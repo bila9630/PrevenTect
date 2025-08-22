@@ -11,16 +11,15 @@ const MapView = () => {
   const [mapboxToken, setMapboxToken] = useState('');
   const [isTokenSet, setIsTokenSet] = useState(false);
 
-  const initializeMap = (token: string) => {
-    console.log('Attempting to initialize map with token:', token);
-    if (!mapContainer.current || !token) {
-      console.error('Missing requirements:', { mapContainer: !!mapContainer.current, token: !!token });
-      return;
-    }
+  // Initialize map when both token is set and container is ready
+  useEffect(() => {
+    if (!isTokenSet || !mapboxToken || !mapContainer.current) return;
 
+    console.log('Initializing map with token:', mapboxToken);
+    
     try {
       // Set the Mapbox access token
-      mapboxgl.accessToken = token;
+      mapboxgl.accessToken = mapboxToken;
       console.log('Mapbox token set successfully');
       
       // Initialize map with globe projection and deep space theme
@@ -35,91 +34,89 @@ const MapView = () => {
       });
 
       console.log('Map instance created successfully');
-    } catch (error) {
-      console.error('Error initializing map:', error);
-      return;
-    }
 
-    // Add navigation controls
-    map.current.addControl(
-      new mapboxgl.NavigationControl({
-        visualizePitch: true,
-      }),
-      'top-right'
-    );
+      // Add navigation controls
+      map.current.addControl(
+        new mapboxgl.NavigationControl({
+          visualizePitch: true,
+        }),
+        'top-right'
+      );
 
-    // Disable scroll zoom for smoother globe experience
-    map.current.scrollZoom.disable();
+      // Disable scroll zoom for smoother globe experience
+      map.current.scrollZoom.disable();
 
-    // Add atmosphere and fog effects for the globe
-    map.current.on('style.load', () => {
-      if (!map.current) return;
-      
-      // Set fog and atmosphere for space-like appearance
-      map.current.setFog({
-        color: 'hsl(195, 100%, 70%)',
-        'high-color': 'hsl(220, 25%, 8%)', 
-        'horizon-blend': 0.1,
-        'space-color': 'hsl(220, 30%, 5%)',
-        'star-intensity': 0.8
+      // Add atmosphere and fog effects for the globe
+      map.current.on('style.load', () => {
+        if (!map.current) return;
+        
+        // Set fog and atmosphere for space-like appearance
+        map.current.setFog({
+          color: 'hsl(195, 100%, 70%)',
+          'high-color': 'hsl(220, 25%, 8%)', 
+          'horizon-blend': 0.1,
+          'space-color': 'hsl(220, 30%, 5%)',
+          'star-intensity': 0.8
+        });
+
+        // Add globe glow effect
+        map.current.setPaintProperty('background', 'background-color', 'hsl(220, 30%, 5%)');
       });
 
-      // Add globe glow effect
-      map.current.setPaintProperty('background', 'background-color', 'hsl(220, 30%, 5%)');
-    });
+      // Globe rotation animation
+      const secondsPerRevolution = 240;
+      const maxSpinZoom = 5;
+      const slowSpinZoom = 3;
+      let userInteracting = false;
+      let spinEnabled = true;
 
-    // Globe rotation animation
-    const secondsPerRevolution = 240;
-    const maxSpinZoom = 5;
-    const slowSpinZoom = 3;
-    let userInteracting = false;
-    let spinEnabled = true;
-
-    function spinGlobe() {
-      if (!map.current) return;
-      
-      const zoom = map.current.getZoom();
-      if (spinEnabled && !userInteracting && zoom < maxSpinZoom) {
-        let distancePerSecond = 360 / secondsPerRevolution;
-        if (zoom > slowSpinZoom) {
-          const zoomDif = (maxSpinZoom - zoom) / (maxSpinZoom - slowSpinZoom);
-          distancePerSecond *= zoomDif;
+      function spinGlobe() {
+        if (!map.current) return;
+        
+        const zoom = map.current.getZoom();
+        if (spinEnabled && !userInteracting && zoom < maxSpinZoom) {
+          let distancePerSecond = 360 / secondsPerRevolution;
+          if (zoom > slowSpinZoom) {
+            const zoomDif = (maxSpinZoom - zoom) / (maxSpinZoom - slowSpinZoom);
+            distancePerSecond *= zoomDif;
+          }
+          const center = map.current.getCenter();
+          center.lng -= distancePerSecond;
+          map.current.easeTo({ center, duration: 1000, easing: (n) => n });
         }
-        const center = map.current.getCenter();
-        center.lng -= distancePerSecond;
-        map.current.easeTo({ center, duration: 1000, easing: (n) => n });
       }
+
+      // Interaction event listeners
+      const onInteractionStart = () => {
+        userInteracting = true;
+      };
+      
+      const onInteractionEnd = () => {
+        userInteracting = false;
+        spinGlobe();
+      };
+
+      map.current.on('mousedown', onInteractionStart);
+      map.current.on('dragstart', onInteractionStart);
+      map.current.on('mouseup', onInteractionEnd);
+      map.current.on('touchend', onInteractionEnd);
+      map.current.on('moveend', () => {
+        spinGlobe();
+      });
+
+      // Start the globe spinning
+      spinGlobe();
+
+    } catch (error) {
+      console.error('Error initializing map:', error);
     }
-
-    // Interaction event listeners
-    const onInteractionStart = () => {
-      userInteracting = true;
-    };
-    
-    const onInteractionEnd = () => {
-      userInteracting = false;
-      spinGlobe();
-    };
-
-    map.current.on('mousedown', onInteractionStart);
-    map.current.on('dragstart', onInteractionStart);
-    map.current.on('mouseup', onInteractionEnd);
-    map.current.on('touchend', onInteractionEnd);
-    map.current.on('moveend', () => {
-      spinGlobe();
-    });
-
-    // Start the globe spinning
-    spinGlobe();
-
-    setIsTokenSet(true);
-  };
+  }, [isTokenSet, mapboxToken]);
 
   const handleTokenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submitted with token:', mapboxToken);
     if (mapboxToken.trim()) {
-      initializeMap(mapboxToken.trim());
+      setIsTokenSet(true);
     } else {
       console.error('Empty token provided');
     }
