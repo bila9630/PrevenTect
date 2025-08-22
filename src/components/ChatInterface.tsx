@@ -232,57 +232,58 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className="flex items-start gap-2 max-w-[80%]">
-                {!message.isUser && (
-                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1 shrink-0">
-                    <MapPin className="h-3 w-3 text-primary" />
-                  </div>
-                )}
-                <div
-                  className={`rounded-lg p-3 ${message.isUser
-                    ? 'bg-primary text-primary-foreground ml-8'
-                    : 'bg-message-bubble text-message-text'
-                    }`}
-                >
-                  <p className="text-sm leading-relaxed">{message.text}</p>
-                  <div className="mt-1 flex items-center justify-between">
-                    <span className={`text-xs ${message.isUser
-                      ? 'text-primary-foreground/70'
-                      : 'text-message-text/70'
-                      }`}>
-                      {message.timestamp.toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
+            <div key={message.id}>
+              <div
+                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className="flex items-start gap-2 max-w-[80%]">
+                  {!message.isUser && (
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1 shrink-0">
+                      <MapPin className="h-3 w-3 text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className={`rounded-lg p-3 ${message.isUser
+                      ? 'bg-primary text-primary-foreground ml-8'
+                      : 'bg-message-bubble text-message-text'
+                      }`}
+                  >
+                    <p className="text-sm leading-relaxed">{message.text}</p>
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className={`text-xs ${message.isUser
+                        ? 'text-primary-foreground/70'
+                        : 'text-message-text/70'
+                        }`}>
+                        {message.timestamp.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                {/* Quick options after first bot message */}
-                {!message.isUser && message.id === '1' && showQuickOptions && (
-                  <div className="mt-3 flex flex-col gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuickOption('Schaden melden')}
-                      className="text-left justify-start text-sm"
-                    >
-                      Schaden melden
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuickOption('Schadensimulation')}
-                      className="text-left justify-start text-sm"
-                    >
-                      Schadensimulation
-                    </Button>
-                  </div>
-                )}
               </div>
+              {/* Quick options after first bot message */}
+              {!message.isUser && message.id === '1' && showQuickOptions && (
+                <div className="mt-3 ml-8 flex flex-col gap-2 max-w-[80%]">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickOption('Schaden melden')}
+                    className="text-left justify-start text-sm"
+                  >
+                    Schaden melden
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickOption('Schadensimulation')}
+                    className="text-left justify-start text-sm"
+                  >
+                    Schadensimulation
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
           <div ref={messagesEndRef} />
