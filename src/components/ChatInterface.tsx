@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, MapPin, KeyRound } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import OpenAI from 'openai';
+import { useOpenAI } from '@/hooks/useOpenAI';
 
 interface Message {
   id: string;
@@ -32,6 +32,7 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
+  const { sendWithFunctions } = useOpenAI(apiKey);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,21 +65,6 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
     toast({ description: 'OpenAI API key cleared.' });
   };
 
-  // Function definition for OpenAI to call when user wants to zoom to a location
-  const zoomToLocationFunction = {
-    name: "zoom_to_location",
-    description: "Zoom the map to a specific location or address",
-    parameters: {
-      type: "object",
-      properties: {
-        address: {
-          type: "string",
-          description: "The address or location to zoom to (e.g., 'Paris, France', '123 Main St, New York')"
-        }
-      },
-      required: ["address"]
-    }
-  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,65 +96,50 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
 
     setIsLoading(true);
     try {
-      const openai = new OpenAI({
-        apiKey: apiKey,
-        dangerouslyAllowBrowser: true
-      });
+      const result = await sendWithFunctions(messageText);
 
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4.1',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are Mapalytics, a helpful map and geospatial assistant. Be precise and concise. When users mention locations, addresses, or want to see places on a map, use the zoom_to_location function.' 
-          },
-          { role: 'user', content: messageText }
-        ],
-        functions: [zoomToLocationFunction],
-        function_call: "auto",
-        temperature: 0.3
-      });
-
-      const message = response.choices[0].message;
-
-      // Check if OpenAI wants to call the zoom function
-      if (message.function_call && message.function_call.name === "zoom_to_location" && onLocationRequest) {
-        const args = JSON.parse(message.function_call.arguments);
-        const address = args.address;
-
-        try {
-          const result = await onLocationRequest(address);
-          
-          const locationMessage: Message = {
+      if (result.type === 'function_call' && result.name === 'zoom_to_location') {
+        const address = result.args.address;
+        if (onLocationRequest) {
+          try {
+            const loc = await onLocationRequest(address);
+            const locationMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              text: loc.success 
+                ? `📍 Found "${loc.location}" and zoomed to the location on the map!`
+                : `❌ ${loc.error || 'Could not find that location. Please try a more specific address.'}`,
+              timestamp: new Date(),
+              isUser: false,
+            };
+            setMessages(prev => [...prev, locationMessage]);
+          } catch (error) {
+            const errorMessage: Message = {
+              id: (Date.now() + 2).toString(),
+              text: "❌ Sorry, I had trouble finding that location. Please try again.",
+              timestamp: new Date(),
+              isUser: false,
+            };
+            setMessages(prev => [...prev, errorMessage]);
+          }
+        } else {
+          const fallbackMessage: Message = {
             id: (Date.now() + 1).toString(),
-            text: result.success 
-              ? `📍 Found "${result.location}" and zoomed to the location on the map!`
-              : `❌ ${result.error || 'Could not find that location. Please try a more specific address.'}`,
+            text: "I'm not sure how to answer that.",
             timestamp: new Date(),
             isUser: false,
           };
-          
-          setMessages(prev => [...prev, locationMessage]);
-        } catch (error) {
-          const errorMessage: Message = {
-            id: (Date.now() + 2).toString(),
-            text: "❌ Sorry, I had trouble finding that location. Please try again.",
-            timestamp: new Date(),
-            isUser: false,
-          };
-          setMessages(prev => [...prev, errorMessage]);
+          setMessages(prev => [...prev, fallbackMessage]);
         }
-      } else {
-        // Regular AI response
-        const content: string = message.content?.trim() || "I'm not sure how to answer that.";
+      } else if (result.type === 'text') {
         const aiResponse: Message = {
           id: (Date.now() + 1).toString(),
-          text: content,
+          text: result.content,
           timestamp: new Date(),
           isUser: false,
         };
         setMessages(prev => [...prev, aiResponse]);
       }
+
     } catch (err: any) {
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
