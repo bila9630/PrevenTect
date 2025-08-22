@@ -30,7 +30,6 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [apiKey, setApiKey] = useState<string>('');
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
-  const [showKeyInput, setShowKeyInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
 
@@ -56,7 +55,6 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
     localStorage.setItem('openai_api_key', apiKeyInput.trim());
     setApiKey(apiKeyInput.trim());
     setApiKeyInput('');
-    setShowKeyInput(false);
     toast({ description: 'OpenAI API key saved locally.' });
   };
 
@@ -102,7 +100,7 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
     if (!apiKey) {
       const infoMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "To enable AI replies, set your OpenAI API key via the 'API key' button above.",
+        text: "To enable AI replies, please set your OpenAI API key in the card above.",
         timestamp: new Date(),
         isUser: false,
       };
@@ -187,39 +185,34 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
     <div className="h-full flex flex-col bg-chat-background">
       {/* Header */}
       <div className="p-4 border-b border-border bg-card">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Chat</h2>
-            <p className="text-sm text-muted-foreground">
-              Ask questions about the map data
-            </p>
+        <h2 className="text-lg font-semibold text-foreground">Chat</h2>
+        <p className="text-sm text-muted-foreground">
+          Ask questions about the map data
+        </p>
+      </div>
+
+      {/* API Key Setup Card - Only shown when no key is set */}
+      {!apiKey && (
+        <div className="m-4 p-4 bg-muted/50 border border-border rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <KeyRound className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium text-foreground">OpenAI API Key Required</h3>
           </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Enter your OpenAI API key to enable AI responses
+          </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowKeyInput((v) => !v)}>
-              <KeyRound className="h-4 w-4 mr-2" />
-              API key
-            </Button>
-            <div className={`text-xs ${apiKey ? 'text-primary' : 'text-muted-foreground'}`}>
-              {apiKey ? 'Ready' : 'Not set'}
-            </div>
-          </div>
-        </div>
-        {showKeyInput && (
-          <div className="mt-3 flex items-center gap-2">
             <Input
               type="password"
               placeholder="sk-..."
               value={apiKeyInput}
               onChange={(e) => setApiKeyInput(e.target.value)}
-              className="bg-input border-border"
+              className="bg-background border-border text-sm"
             />
             <Button size="sm" onClick={saveApiKey}>Save</Button>
-            {apiKey && (
-              <Button size="sm" variant="secondary" onClick={clearApiKey}>Clear</Button>
-            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
