@@ -51,19 +51,19 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
 
   const saveApiKey = () => {
     if (!apiKeyInput.trim()) {
-      toast({ description: 'Please enter an API key.' });
+      toast({ description: 'Bitte gib einen API-Schlüssel ein.' });
       return;
     }
     localStorage.setItem('openai_api_key', apiKeyInput.trim());
     setApiKey(apiKeyInput.trim());
     setApiKeyInput('');
-    toast({ description: 'OpenAI API key saved locally.' });
+    toast({ description: 'OpenAI API-Schlüssel lokal gespeichert.' });
   };
 
   const clearApiKey = () => {
     localStorage.removeItem('openai_api_key');
     setApiKey('');
-    toast({ description: 'OpenAI API key cleared.' });
+    toast({ description: 'OpenAI API-Schlüssel gelöscht.' });
   };
 
 
@@ -87,7 +87,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     if (!apiKey) {
       const infoMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "To enable AI replies, please set your OpenAI API key in the card above.",
+        text: "Um KI-Antworten zu aktivieren, bitte setze deinen OpenAI API-Schlüssel in der Karte oben.",
         timestamp: new Date(),
         isUser: false,
       };
@@ -107,8 +107,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
             const locationMessage: Message = {
               id: (Date.now() + 1).toString(),
               text: loc.success
-                ? `📍 Found "${loc.location}" and zoomed to the location on the map!`
-                : `❌ ${loc.error || 'Could not find that location. Please try a more specific address.'}`,
+                ? `📍 "${loc.location}" gefunden und zur Position auf der Karte gezoomt!`
+                : `❌ ${loc.error || 'Konnte diesen Ort nicht finden. Bitte versuche eine spezifischere Adresse.'}`,
               timestamp: new Date(),
               isUser: false,
             };
@@ -116,7 +116,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
           } catch (error) {
             const errorMessage: Message = {
               id: (Date.now() + 2).toString(),
-              text: "❌ Sorry, I had trouble finding that location. Please try again.",
+              text: "❌ Entschuldigung, ich hatte Probleme dabei, diesen Ort zu finden. Bitte versuche es noch einmal.",
               timestamp: new Date(),
               isUser: false,
             };
@@ -125,7 +125,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
         } else {
           const fallbackMessage: Message = {
             id: (Date.now() + 1).toString(),
-            text: "I'm not sure how to answer that.",
+            text: "Ich bin mir nicht sicher, wie ich darauf antworten soll.",
             timestamp: new Date(),
             isUser: false,
           };
@@ -139,8 +139,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
             const rainMessage: Message = {
               id: (Date.now() + 1).toString(),
               text: rainResult.success
-                ? `🌧️ Rain effect ${enabled ? 'enabled' : 'disabled'} on the map!`
-                : `❌ ${rainResult.error || 'Could not toggle rain effect.'}`,
+                ? `🌧️ Regen-Effekt ${enabled ? 'aktiviert' : 'deaktiviert'} auf der Karte!`
+                : `❌ ${rainResult.error || 'Konnte den Regen-Effekt nicht umschalten.'}`,
               timestamp: new Date(),
               isUser: false,
             };
@@ -148,7 +148,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
           } catch (error) {
             const errorMessage: Message = {
               id: (Date.now() + 2).toString(),
-              text: "❌ Sorry, I had trouble toggling the rain effect. Please try again.",
+              text: "❌ Entschuldigung, ich hatte Probleme dabei, den Regen-Effekt umzuschalten. Bitte versuche es noch einmal.",
               timestamp: new Date(),
               isUser: false,
             };
@@ -157,7 +157,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
         } else {
           const fallbackMessage: Message = {
             id: (Date.now() + 1).toString(),
-            text: "I'm not sure how to answer that.",
+            text: "Ich bin mir nicht sicher, wie ich darauf antworten soll.",
             timestamp: new Date(),
             isUser: false,
           };
@@ -176,7 +176,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     } catch (err: any) {
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
-        text: `❌ OpenAI error: ${err?.message || 'Unknown error'}`,
+        text: `❌ OpenAI Fehler: ${err?.message || 'Unbekannter Fehler'}`,
         timestamp: new Date(),
         isUser: false,
       };
@@ -191,7 +191,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
       <div className="p-4 border-b border-border bg-card">
         <h2 className="text-lg font-semibold text-foreground">Chat</h2>
         <p className="text-sm text-muted-foreground">
-          Ask questions about the map data
+          Stelle Fragen zu den Kartendaten
         </p>
       </div>
 
@@ -200,10 +200,10 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
         <div className="m-4 p-4 bg-muted/50 border border-border rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <KeyRound className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-foreground">OpenAI API Key Required</h3>
+            <h3 className="text-sm font-medium text-foreground">OpenAI API-Schlüssel erforderlich</h3>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Enter your OpenAI API key to enable AI responses
+            Gib deinen OpenAI API-Schlüssel ein, um KI-Antworten zu aktivieren
           </p>
           <div className="flex items-center gap-2">
             <Input
@@ -213,7 +213,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
               onChange={(e) => setApiKeyInput(e.target.value)}
               className="bg-background border-border text-sm"
             />
-            <Button size="sm" onClick={saveApiKey}>Save</Button>
+            <Button size="sm" onClick={saveApiKey}>Speichern</Button>
           </div>
         </div>
       )}
@@ -264,7 +264,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
           <Input
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Try typing an address like '123 Main St, New York'..."
+            placeholder="Gib gerne deine Anliegen ein..."
             className="flex-1 bg-input border-border text-foreground placeholder:text-muted-foreground"
           />
           <Button
