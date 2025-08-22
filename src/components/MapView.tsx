@@ -19,15 +19,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   const [mapboxToken, setMapboxToken] = useState('');
   const [isTokenSet, setIsTokenSet] = useState(false);
 
-  // Load cached token on component mount
-  useEffect(() => {
-    const cachedToken = localStorage.getItem('mapbox-token');
-    if (cachedToken) {
-      setMapboxToken(cachedToken);
-      setIsTokenSet(true);
-    }
-  }, []);
-
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
 
   // Expose map controls to parent component
@@ -181,8 +172,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
     e.preventDefault();
     console.log('Form submitted with token:', mapboxToken);
     if (mapboxToken.trim()) {
-      // Cache the token in localStorage
-      localStorage.setItem('mapbox-token', mapboxToken.trim());
       setIsTokenSet(true);
     } else {
       console.error('Empty token provided');
