@@ -12,21 +12,33 @@ const MapView = () => {
   const [isTokenSet, setIsTokenSet] = useState(false);
 
   const initializeMap = (token: string) => {
-    if (!mapContainer.current || !token) return;
+    console.log('Attempting to initialize map with token:', token);
+    if (!mapContainer.current || !token) {
+      console.error('Missing requirements:', { mapContainer: !!mapContainer.current, token: !!token });
+      return;
+    }
 
-    // Set the Mapbox access token
-    mapboxgl.accessToken = token;
-    
-    // Initialize map with globe projection and deep space theme
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/satellite-streets-v12',
-      projection: 'globe' as any,
-      zoom: 1.5,
-      center: [30, 15],
-      pitch: 0,
-      bearing: 0,
-    });
+    try {
+      // Set the Mapbox access token
+      mapboxgl.accessToken = token;
+      console.log('Mapbox token set successfully');
+      
+      // Initialize map with globe projection and deep space theme
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        projection: 'globe' as any,
+        zoom: 1.5,
+        center: [30, 15],
+        pitch: 0,
+        bearing: 0,
+      });
+
+      console.log('Map instance created successfully');
+    } catch (error) {
+      console.error('Error initializing map:', error);
+      return;
+    }
 
     // Add navigation controls
     map.current.addControl(
@@ -105,8 +117,11 @@ const MapView = () => {
 
   const handleTokenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted with token:', mapboxToken);
     if (mapboxToken.trim()) {
       initializeMap(mapboxToken.trim());
+    } else {
+      console.error('Empty token provided');
     }
   };
 
