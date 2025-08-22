@@ -5,7 +5,12 @@ export type AIResult =
   | { type: 'text'; content: string }
   | { type: 'function_call'; name: string; args: any };
 
-export const useOpenAI = (apiKey?: string) => {
+interface UseOpenAIProps {
+  onLocationRequest?: (address: string) => Promise<any>;
+  onRainToggle?: (enabled: boolean) => Promise<any>;
+}
+
+export const useOpenAI = (apiKey?: string, props?: UseOpenAIProps) => {
   const clientRef = useRef<OpenAI | null>(null);
 
   useEffect(() => {
@@ -19,7 +24,7 @@ export const useOpenAI = (apiKey?: string) => {
   const sendWithFunctions = async (messageText: string): Promise<AIResult> => {
     if (!clientRef.current) throw new Error('OpenAI client not initialized');
 
-    // Function definition for OpenAI to call when user wants to zoom to a location
+    // Function definitions for OpenAI to call
     const zoomToLocationFunction = {
       name: 'zoom_to_location',
       description: 'Zoom the map to a specific location or address',
@@ -36,26 +41,48 @@ export const useOpenAI = (apiKey?: string) => {
       },
     } as const;
 
+    const toggleRainFunction = {
+      name: 'toggle_rain_effect',
+      description: 'Enable or disable rain effect on the map',
+      parameters: {
+        type: 'object',
+        properties: {
+          enabled: {
+            type: 'boolean',
+            description: 'Whether to enable (true) or disable (false) the rain effect',
+          },
+        },
+        required: ['enabled'],
+      },
+    } as const;
+
     const response = await clientRef.current.chat.completions.create({
       model: 'gpt-4.1',
       messages: [
         {
           role: 'system',
           content:
-            'You are Mapalytics, a helpful map and geospatial assistant. Be precise and concise. When users mention locations, addresses, or want to see places on a map, use the zoom_to_location function.',
+            'You are Mapalytics, a helpful map and geospatial assistant. Be precise and concise. When users mention locations, addresses, or want to see places on a map, use the zoom_to_location function. When users ask for weather effects like rain, use the toggle_rain_effect function.',
         },
         { role: 'user', content: messageText },
       ],
-      functions: [zoomToLocationFunction as any],
+      functions: [zoomToLocationFunction as any, toggleRainFunction as any],
       function_call: 'auto',
       temperature: 0.3,
     });
 
     const message = response.choices[0].message as any;
 
-    if (message.function_call && message.function_call.name === 'zoom_to_location') {
+    if (message.function_call) {
       const args = JSON.parse(message.function_call.arguments);
-      return { type: 'function_call', name: 'zoom_to_location', args };
+      
+      if (message.function_call.name === 'zoom_to_location') {
+        return { type: 'function_call', name: 'zoom_to_location', args };
+      }
+      
+      if (message.function_call.name === 'toggle_rain_effect') {
+        return { type: 'function_call', name: 'toggle_rain_effect', args };
+      }
     }
 
     const content: string = message.content?.trim() || "I'm not sure how to answer that.";

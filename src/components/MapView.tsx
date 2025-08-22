@@ -11,6 +11,7 @@ interface MapViewProps {
 
 interface MapViewRef {
   flyTo: (coordinates: [number, number], zoom?: number) => void;
+  toggleRain: (enabled: boolean) => void;
 }
 
 const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
@@ -29,6 +30,41 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   }, []);
 
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
+  const [isRainEnabled, setIsRainEnabled] = useState(false);
+
+  // Rain effect helper function
+  const toggleRainEffect = (enabled: boolean) => {
+    if (!map.current) return;
+    
+    if (enabled) {
+      const zoomBasedReveal = (value: number) => {
+        return [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          11,
+          0.0,
+          13,
+          value
+        ];
+      };
+
+      (map.current as any).setRain({
+        density: zoomBasedReveal(0.5),
+        intensity: 1.0,
+        color: '#a8adbc',
+        opacity: 0.7,
+        vignette: zoomBasedReveal(1.0),
+        'vignette-color': '#464646',
+        direction: [0, 80],
+        'droplet-size': [2.6, 18.2],
+        'distortion-strength': 0.7,
+        'center-thinning': 0
+      });
+    } else {
+      (map.current as any).setRain(null);
+    }
+  };
 
   // Expose map controls to parent component
   useImperativeHandle(ref, () => ({
@@ -40,6 +76,10 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
           duration: 2000
         });
       }
+    },
+    toggleRain: (enabled: boolean) => {
+      setIsRainEnabled(enabled);
+      toggleRainEffect(enabled);
     }
   }), []);
 

@@ -33,6 +33,18 @@ const Index = () => {
     }
   };
 
+  const handleRainToggle = async (enabled: boolean) => {
+    if (!mapRef.current) return;
+
+    try {
+      mapRef.current.toggleRain(enabled);
+      return { success: true, enabled };
+    } catch (error) {
+      console.error('Rain toggle error:', error);
+      return { success: false, error: "Failed to toggle rain effect" };
+    }
+  };
+
   return (
     <div className="h-full flex">
       {/* Map Section */}
@@ -45,7 +57,7 @@ const Index = () => {
       {/* Chat Section */}
       <div className="flex-[2] p-4 pl-2">
         <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
-          <ChatInterface onLocationRequest={handleLocationRequest} />
+          <ChatInterface onLocationRequest={handleLocationRequest} onRainToggle={handleRainToggle} />
         </div>
       </div>
     </div>

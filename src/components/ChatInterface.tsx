@@ -15,9 +15,10 @@ interface Message {
 
 interface ChatInterfaceProps {
   onLocationRequest?: (address: string) => Promise<{ success: boolean; location?: string; coordinates?: number[]; error?: string }>;
+  onRainToggle?: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
 }
 
-const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
+const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -116,6 +117,38 @@ const ChatInterface = ({ onLocationRequest }: ChatInterfaceProps) => {
             const errorMessage: Message = {
               id: (Date.now() + 2).toString(),
               text: "❌ Sorry, I had trouble finding that location. Please try again.",
+              timestamp: new Date(),
+              isUser: false,
+            };
+            setMessages(prev => [...prev, errorMessage]);
+          }
+        } else {
+          const fallbackMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: "I'm not sure how to answer that.",
+            timestamp: new Date(),
+            isUser: false,
+          };
+          setMessages(prev => [...prev, fallbackMessage]);
+        }
+      } else if (result.type === 'function_call' && result.name === 'toggle_rain_effect') {
+        const enabled = result.args.enabled;
+        if (onRainToggle) {
+          try {
+            const rainResult = await onRainToggle(enabled);
+            const rainMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              text: rainResult.success 
+                ? `🌧️ Rain effect ${enabled ? 'enabled' : 'disabled'} on the map!`
+                : `❌ ${rainResult.error || 'Could not toggle rain effect.'}`,
+              timestamp: new Date(),
+              isUser: false,
+            };
+            setMessages(prev => [...prev, rainMessage]);
+          } catch (error) {
+            const errorMessage: Message = {
+              id: (Date.now() + 2).toString(),
+              text: "❌ Sorry, I had trouble toggling the rain effect. Please try again.",
               timestamp: new Date(),
               isUser: false,
             };
