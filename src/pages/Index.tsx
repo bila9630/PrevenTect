@@ -12,17 +12,17 @@ const Index = () => {
     try {
       // Use Mapbox Geocoding API to convert address to coordinates
       const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxToken}&limit=1`;
-      
+
       const response = await fetch(geocodeUrl);
       const data = await response.json();
-      
+
       if (data.features && data.features.length > 0) {
         const [lng, lat] = data.features[0].center;
         const placeName = data.features[0].place_name;
-        
+
         // Zoom to the location
         mapRef.current.flyTo([lng, lat], 12);
-        
+
         return { success: true, location: placeName, coordinates: [lng, lat] };
       } else {
         return { success: false, error: "Location not found" };
@@ -36,14 +36,14 @@ const Index = () => {
   return (
     <div className="h-full flex">
       {/* Map Section */}
-      <div className="flex-1 p-4">
+      <div className="flex-[3] p-4">
         <div className="h-full bg-background/80 backdrop-blur-sm rounded-lg border border-border shadow-2xl">
           <MapView ref={mapRef} onTokenSet={setMapboxToken} />
         </div>
       </div>
 
       {/* Chat Section */}
-      <div className="w-96 p-4 pl-2">
+      <div className="flex-[2] p-4 pl-2">
         <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
           <ChatInterface onLocationRequest={handleLocationRequest} />
         </div>
