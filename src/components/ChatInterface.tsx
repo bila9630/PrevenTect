@@ -32,6 +32,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [apiKey, setApiKey] = useState<string>('');
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showQuickOptions, setShowQuickOptions] = useState<boolean>(true);
   const { toast } = useToast();
   const { sendWithFunctions } = useOpenAI(apiKey);
 
@@ -67,16 +68,25 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   };
 
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+  const handleQuickOption = (optionText: string) => {
+    setInputMessage(optionText);
+    setShowQuickOptions(false);
+    // Automatically send the message
+    handleSendMessage(null, optionText);
+  };
 
-    const messageText = inputMessage.trim();
+  const handleSendMessage = async (e: React.FormEvent | null, messageText?: string) => {
+    if (e) e.preventDefault();
+    
+    const actualMessageText = messageText || inputMessage.trim();
+    if (!actualMessageText || isLoading) return;
+
+    setShowQuickOptions(false);
 
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: messageText,
+      text: actualMessageText,
       timestamp: new Date(),
       isUser: true,
     };
@@ -97,7 +107,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
 
     setIsLoading(true);
     try {
-      const result = await sendWithFunctions(messageText);
+      const result = await sendWithFunctions(actualMessageText);
 
       if (result.type === 'function_call' && result.name === 'zoom_to_location') {
         const address = result.args.address;
@@ -251,6 +261,27 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                     </span>
                   </div>
                 </div>
+                {/* Quick options after first bot message */}
+                {!message.isUser && message.id === '1' && showQuickOptions && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickOption('Schaden melden')}
+                      className="text-left justify-start text-sm"
+                    >
+                      Schaden melden
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickOption('Schadensimulation')}
+                      className="text-left justify-start text-sm"
+                    >
+                      Schadensimulation
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
