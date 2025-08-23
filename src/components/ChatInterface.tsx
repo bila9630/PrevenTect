@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Send, MapPin, KeyRound, CalendarIcon } from 'lucide-react';
+import { Send, MapPin, KeyRound, CalendarIcon, Upload, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
 import { format } from 'date-fns';
@@ -39,7 +39,9 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [showQuickOptions, setShowQuickOptions] = useState<boolean>(true);
   const [showDamageOptions, setShowDamageOptions] = useState<boolean>(false);
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [showImageUpload, setShowImageUpload] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [conversationState, setConversationState] = useState<'initial' | 'damage_selected' | 'description_given' | 'date_needed' | 'date_selected'>('initial');
   const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
   const { toast } = useToast();
@@ -458,6 +460,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                             
                             setMessages(prev => [...prev, userDateMessage, botImageMessage]);
                             setConversationState('date_selected');
+                            setLastBotMessageId(botImageMessage.id);
+                            setShowImageUpload(true);
                           }
                         }}
                         disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
@@ -466,6 +470,142 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                       />
                     </PopoverContent>
                   </Popover>
+                </div>
+              )}
+              
+              {/* Image Upload */}
+              {!message.isUser && message.id === lastBotMessageId && showImageUpload && (
+                <div className="mt-3 ml-8">
+                  <div className="max-w-md">
+                    <div 
+                      className="relative border-2 border-dashed border-border rounded-lg p-6 bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.add('border-primary', 'bg-primary/10');
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('border-primary', 'bg-primary/10');
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('border-primary', 'bg-primary/10');
+                        const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+                        if (files.length > 0) {
+                          setUploadedImages(prev => [...prev, ...files]);
+                          toast({ description: `${files.length} Bild(er) hochgeladen` });
+                        }
+                      }}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.multiple = true;
+                        input.onchange = (e) => {
+                          const files = Array.from((e.target as HTMLInputElement).files || []);
+                          if (files.length > 0) {
+                            setUploadedImages(prev => [...prev, ...files]);
+                            toast({ description: `${files.length} Bild(er) hochgeladen` });
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <div className="flex flex-col items-center gap-3 text-center">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                          <Upload className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Bilder hochladen</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Bilder hier ablegen oder klicken zum Auswählen
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {uploadedImages.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs text-muted-foreground">Hochgeladene Bilder:</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {uploadedImages.map((file, index) => (
+                            <div key={index} className="relative bg-card border border-border rounded-lg p-2 group">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center shrink-0">
+                                  <Upload className="h-4 w-4 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-foreground truncate">{file.name}</p>
+                                  <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-end mt-3">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setShowImageUpload(false);
+                              const confirmMessage: Message = {
+                                id: Date.now().toString(),
+                                text: `${uploadedImages.length} Bild(er) hochgeladen`,
+                                timestamp: new Date(),
+                                isUser: true,
+                              };
+                              const finalMessage: Message = {
+                                id: (Date.now() + 1).toString(),
+                                text: 'Vielen Dank! Ihre Schadensmeldung wurde erfasst. Das System wird nun die Daten verarbeiten und Sie erhalten weitere Informationen per E-Mail.',
+                                timestamp: new Date(),
+                                isUser: false,
+                              };
+                              setMessages(prev => [...prev, confirmMessage, finalMessage]);
+                              setConversationState('initial');
+                            }}
+                          >
+                            Fertig
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {uploadedImages.length === 0 && (
+                      <div className="flex justify-end mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowImageUpload(false);
+                            const skipMessage: Message = {
+                              id: Date.now().toString(),
+                              text: 'Keine Bilder hochgeladen',
+                              timestamp: new Date(),
+                              isUser: true,
+                            };
+                            const finalMessage: Message = {
+                              id: (Date.now() + 1).toString(),
+                              text: 'Vielen Dank! Ihre Schadensmeldung wurde erfasst. Das System wird nun die Daten verarbeiten und Sie erhalten weitere Informationen per E-Mail.',
+                              timestamp: new Date(),
+                              isUser: false,
+                            };
+                            setMessages(prev => [...prev, skipMessage, finalMessage]);
+                            setConversationState('initial');
+                          }}
+                        >
+                          Überspringen
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
