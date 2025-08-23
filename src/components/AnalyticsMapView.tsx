@@ -45,10 +45,23 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             // Create custom marker element using SVG pin with bottom anchor
             const el = document.createElement('div');
             el.className = 'building-marker';
-            el.style.width = '20px';
-            el.style.height = '24px';
             el.style.cursor = 'pointer';
             el.style.display = 'block';
+            el.style.transition = 'all 0.2s ease';
+            
+            const updateMarkerSize = (isSelected: boolean) => {
+                if (isSelected) {
+                    el.style.width = '28px';
+                    el.style.height = '32px';
+                    el.style.transform = 'scale(1.4)';
+                    el.style.zIndex = '1000';
+                } else {
+                    el.style.width = '20px';
+                    el.style.height = '24px';
+                    el.style.transform = 'scale(1)';
+                    el.style.zIndex = '1';
+                }
+            };
             
             let riskValue, minVal, maxVal, fillColor, shadowColor;
             
@@ -70,18 +83,34 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             fillColor = `hsl(${hue}, 80%, 50%)`;
             shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
             
+            // Initial size
+            updateMarkerSize(false);
+            
             // SVG pin (small, crisp) - tip at bottom center
             el.innerHTML = `
-              <svg width="20" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
+              <svg width="100%" height="100%" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
                 <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="${fillColor}" stroke="white" stroke-width="1.5" />
               </svg>
             `;
 
             // Add click handler to marker
             el.addEventListener('click', () => {
+                // Reset all markers to normal size
+                markers.forEach(marker => {
+                    const markerEl = marker.getElement();
+                    markerEl.style.width = '20px';
+                    markerEl.style.height = '24px';
+                    markerEl.style.transform = 'scale(1)';
+                    markerEl.style.zIndex = '1';
+                });
+                
+                // Make this marker bigger
+                updateMarkerSize(true);
+                
                 setSelectedBuilding({
                     address: coord.address,
-                    riskData: coord.riskData
+                    riskData: coord.riskData,
+                    markerId: coord.address // use address as unique identifier
                 });
             });
 
