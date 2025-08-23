@@ -38,7 +38,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
   const [isRotating, setIsRotating] = useState(false);
   const rotationRef = useRef<number | null>(null);
-  const rotationStartTime = useRef<number>(0);
 
   // Rain effect helper function
   const toggleRainEffect = (enabled: boolean) => {
@@ -77,14 +76,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   // Camera rotation function
   const rotateCamera = (timestamp: number) => {
     if (!map.current || !isRotating) return;
-
-    if (rotationStartTime.current === 0) {
-      rotationStartTime.current = timestamp;
-    }
-
+    
     // Calculate rotation angle (about 10 degrees per second)
-    const elapsed = timestamp - rotationStartTime.current;
-    const rotation = (elapsed / 100) % 360;
+    const rotation = (timestamp / 100) % 360;
     
     map.current.rotateTo(rotation, { duration: 0 });
     
@@ -96,7 +90,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   // Stop rotation function
   const stopCameraRotation = () => {
     setIsRotating(false);
-    rotationStartTime.current = 0;
     if (rotationRef.current) {
       cancelAnimationFrame(rotationRef.current);
       rotationRef.current = null;
@@ -126,7 +119,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       // Set the center and start rotation
       map.current.setCenter(coordinates);
       setIsRotating(true);
-      rotationStartTime.current = 0;
       rotationRef.current = requestAnimationFrame(rotateCamera);
     },
     stopRotation: () => {
