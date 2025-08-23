@@ -96,16 +96,39 @@ const Analytics = () => {
 
     setIsLoading(true);
     try {
-      const encodedAddress = encodeURIComponent(locationDetail);
-      const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=ORTSCHAFT=%27${encodedAddress}%27&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
+      // Hardcoded address for now - can be optimized later with intelligent parser
+      const targetAddress = "Brückenstrasse 73, 3005 Bern";
+      const targetStreet = "Brückenstrasse";
+      const targetNumber = 73;
+      
+      // Search for buildings on the specific street
+      const encodedStreet = encodeURIComponent(targetStreet);
+      const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=ADRESSE LIKE '%${encodedStreet}%'&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
 
       const response = await fetch(url);
       const data = await response.json();
 
       if (data.features && data.features.length > 0) {
+        // Extract house numbers and sort by proximity to target number
+        const buildingsWithNumbers = data.features.map((feature: any) => {
+          const address = feature.attributes.ADRESSE;
+          const numberMatch = address.match(/\b(\d+)\b/);
+          const houseNumber = numberMatch ? parseInt(numberMatch[1]) : null;
+          return {
+            ...feature,
+            houseNumber,
+            distance: houseNumber ? Math.abs(houseNumber - targetNumber) : Infinity
+          };
+        }).filter(building => building.houseNumber !== null);
+
+        // Sort by distance from target number and limit to 30
+        const sortedBuildings = buildingsWithNumbers
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, 30);
+
         // Filter dangerous buildings (flood risk)
-        const dangerousBuildings = data.features.filter((feature: any) => {
-          const attrs = feature.attributes;
+        const dangerousBuildings = sortedBuildings.filter((building: any) => {
+          const attrs = building.attributes;
           return attrs.HOCHWASSER_FLIESSGEWAESSER !== null &&
             attrs.FLIESSGEWAESSER_TEXT_DE !== 'keine Gefährdung';
         });
@@ -136,16 +159,16 @@ const Analytics = () => {
 
           if (validCoordinates.length > 0) {
             mapRef.current?.addMarkers(validCoordinates);
-            toast.success(`Found ${dangerousBuildings.length} dangerous building(s), ${validCoordinates.length} mapped`);
+            toast.success(`Found ${dangerousBuildings.length} dangerous building(s) near ${targetAddress}, ${validCoordinates.length} mapped`);
           } else {
             toast.error('Could not geocode dangerous addresses');
           }
         } else {
           mapRef.current?.clearMarkers();
-          toast.info('No dangerous buildings found for this search');
+          toast.info(`No dangerous buildings found near ${targetAddress}`);
         }
       } else {
-        toast.error('No buildings found for this address');
+        toast.error(`No buildings found on ${targetStreet}`);
       }
     } catch (error) {
       console.error('Search error:', error);
