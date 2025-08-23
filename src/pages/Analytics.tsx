@@ -73,7 +73,7 @@ const Analytics = () => {
       const url = `https://api3.geo.admin.ch/rest/services/ech/SearchServer?sr=2056&searchText=${encodedText}&lang=de&type=locations`;
       const response = await fetch(url);
       const data = await response.json();
-      
+
 
       if (data.results && data.results.length > 0) {
         setLocationResults(prev => JSON.stringify(prev) !== JSON.stringify(data.results) ? data.results : prev);
@@ -172,7 +172,10 @@ const Analytics = () => {
 
           if (validCoordinates.length > 0) {
             mapRef.current?.addMarkers(validCoordinates);
-            toast.success(`Found ${dangerousBuildings.length} dangerous building(s) near ${targetAddress}, ${validCoordinates.length} mapped`);
+            toast.success(
+              `Found ${dangerousBuildings.length} dangerous building(s) near ${targetAddress}, ${validCoordinates.length} mapped`,
+              { duration: 2500 }
+            );
           } else {
             toast.error('Could not geocode dangerous addresses');
           }
@@ -201,7 +204,7 @@ const Analytics = () => {
 
     // Center map on selected location with 3D rotation effect
     mapRef.current?.flyTo([location.attrs.lon, location.attrs.lat], 18);
-    
+
     // Always use the hardcoded address for building search
     searchBuildings(formatAddress(location.attrs.detail));
   }, []);
@@ -234,9 +237,9 @@ const Analytics = () => {
   const formatAddress = ((input: string) => {
     // Replace ae/oe/ue with ä/ö/ü
     const placeInput = input
-        .replace(/ae/g, "ä")
-        .replace(/oe/g, "ö")
-        .replace(/ue/g, "ü");
+      .replace(/ae/g, "ä")
+      .replace(/oe/g, "ö")
+      .replace(/ue/g, "ü");
 
     // Split into parts
     const parts = placeInput.split(/\s+/);

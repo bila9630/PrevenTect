@@ -8,6 +8,9 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Slider } from '@/components/ui/slider';
 import { triggerConfettiSideCannons } from '@/lib/confetti';
 import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Tables } from '@/integrations/supabase/types';
 
 interface AnalyticsMapViewProps {
     onTokenSet?: (token: string) => void;
@@ -51,6 +54,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [markersData, setMarkersData] = useState<MarkerInput[]>([]);
     const [waterThreshold, setWaterThreshold] = useState([1]);
     const [windThreshold, setWindThreshold] = useState([25]);
+    const [claims, setClaims] = useState<Tables<'claims'>[] | null>(null);
+    const [claimsLoading, setClaimsLoading] = useState(false);
+    const [claimsError, setClaimsError] = useState<string | null>(null);
+    const [showClaimsPanel, setShowClaimsPanel] = useState(true);
 
     // Load cached token on component mount
     useEffect(() => {
@@ -350,27 +357,32 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         }
     }, [selectedBuilding]);
 
-    // On marker selection, check Supabase claims for this GWR_EGID
+    // On marker selection, fetch Supabase claims for this GWR_EGID
     useEffect(() => {
         const checkClaim = async () => {
             try {
+                setClaimsError(null);
+                setClaims(null);
+                setShowClaimsPanel(true);
                 const egid = selectedBuilding?.riskData?.GWR_EGID;
                 if (!egid) return;
+                setClaimsLoading(true);
                 const { data, error } = await supabase
                     .from('claims')
-                    .select('id')
+                    .select('*')
                     .eq('gwr_egid', String(egid))
-                    .limit(1);
+                    .order('created_at', { ascending: false });
                 if (error) {
                     console.error('Supabase claims lookup error:', error.message);
-                    return;
-                }
-                if (data && data.length > 0) {
-                    console.log('Claim exists for EGID', egid, data[0]);
+                    setClaimsError(error.message);
+                } else {
+                    setClaims(data ?? []);
                 }
             } catch (e) {
                 console.error('Error checking claim:', e);
+                setClaimsError('Unexpected error');
             }
+            setClaimsLoading(false);
         };
         checkClaim();
     }, [selectedBuilding]);
@@ -735,6 +747,84 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             </div>
                         )}
                     </div>
+                </div>
+            )}
+
+            {/* Claims Panel - bottom left */}
+            {selectedBuilding && showClaimsPanel && claims && claims.length > 0 && (
+                <div className="absolute bottom-4 left-4 z-10 w-96">
+                    <Card className="w-full bg-background/90 backdrop-blur-sm border-border shadow-lg">
+                        <CardHeader className="pb-2 pt-3 flex flex-row items-center justify-between">
+                            <CardTitle className="text-base font-semibold text-foreground">Schadenmeldungen</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-xs">
+                                    {claimsLoading ? '...' : (claims?.length ?? 0)}
+                                </Badge>
+                                <button
+                                    type="button"
+                                    aria-label="Panel schließen"
+                                    onClick={() => setShowClaimsPanel(false)}
+                                    className="text-muted-foreground hover:text-foreground text-xs p-1 rounded"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="pt-2 space-y-3">
+                            {/* Header Info */}
+                            <div className="text-xs text-muted-foreground">
+                                <div className="truncate">
+                                    Adresse: <span className="text-foreground">{selectedBuilding.address}</span>
+                                </div>
+                                {selectedBuilding.riskData?.GWR_EGID && (
+                                    <div>EGID: <span className="font-mono">{String(selectedBuilding.riskData.GWR_EGID)}</span></div>
+                                )}
+                            </div>
+
+                            {claimsLoading && (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-16 w-full" />
+                                    <Skeleton className="h-16 w-full" />
+                                </div>
+                            )}
+
+                            {!claimsLoading && claimsError && (
+                                <div className="text-sm text-red-500">{claimsError}</div>
+                            )}
+
+                            {!claimsLoading && !claimsError && claims && claims.length === 0 && (
+                                <div className="text-sm text-muted-foreground">Keine Schadenmeldungen gefunden.</div>
+                            )}
+
+                            {!claimsLoading && !claimsError && claims && claims.length > 0 && (
+                                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                    {claims.map((c) => (
+                                        <div key={c.id} className="rounded-md border border-border p-3 bg-card/60">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                                                    {c.damage_type}
+                                                </Badge>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {c.claim_date ? new Date(c.claim_date).toLocaleDateString() : new Date(c.created_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            {c.description && (
+                                                <p className="text-sm text-foreground/90 line-clamp-3">{c.description}</p>
+                                            )}
+                                            <div className="mt-2 flex gap-2 flex-wrap">
+                                                {typeof c.images_count === 'number' && (
+                                                    <Badge variant="secondary" className="text-[10px]">Bilder: {c.images_count}</Badge>
+                                                )}
+                                                {c.location_name && (
+                                                    <Badge variant="secondary" className="text-[10px]">Ort: {c.location_name}</Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
             )}
 
