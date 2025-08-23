@@ -77,10 +77,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 minVal = 1;
                 maxVal = 6;
             } else {
-                // Wind risk (20-40 => green->red)  
+                // Wind risk (25-38 => green->red)  
                 riskValue = coord.riskData?.STURM;
-                minVal = 20;
-                maxVal = 40;
+                minVal = 25;
+                maxVal = 38;
             }
             
             const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
@@ -212,10 +212,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     minVal = 1;
                     maxVal = 6;
                 } else {
-                    // Wind risk (20-40 => green->red)  
+                    // Wind risk (25-38 => green->red)  
                     riskValue = coord.riskData?.STURM;
-                    minVal = 20;
-                    maxVal = 40;
+                    minVal = 25;
+                    maxVal = 38;
                 }
                 
                 const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
@@ -649,40 +649,44 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         </div>
                         
                         {selectedBuilding.riskData && (
-                            <div>
-                        {riskMode === 'water' ? (
-                            <div>
-                                <h4 className="font-medium text-foreground mb-1">Risiko Wasserschaden</h4>
-                                <div className="flex items-center space-x-2">
-                                    {(() => {
-                                        const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
-                                        const text = selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE;
-                                        let colorClass = "text-muted-foreground";
-                                        
-                                        if (value >= 200) {
-                                            colorClass = "text-red-500";
-                                        } else if (value >= 100) {
-                                            colorClass = "text-yellow-500";
-                                        }
-                                        
-                                        return (
-                                            <span className={`text-sm ${colorClass}`}>
-                                                {text || 'N/A'}
-                                            </span>
-                                        );
-                                    })()}
+                            <div className="space-y-3">
+                                {/* Water Risk */}
+                                <div className={`${riskMode === 'water' ? 'opacity-100' : 'opacity-50'}`}>
+                                    <h4 className={`font-medium mb-1 ${riskMode === 'water' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                        Risiko Wasserschaden
+                                    </h4>
+                                    <div className="flex items-center space-x-2">
+                                        {(() => {
+                                            const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
+                                            const text = selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE;
+                                            let colorClass = "text-muted-foreground";
+                                            
+                                            if (value >= 200) {
+                                                colorClass = "text-red-500";
+                                            } else if (value >= 100) {
+                                                colorClass = "text-yellow-500";
+                                            }
+                                            
+                                            return (
+                                                <span className={`text-sm ${colorClass}`}>
+                                                    {text || 'N/A'}
+                                                </span>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <div>
-                                <h4 className="font-medium text-foreground mb-1">Risiko Sturm</h4>
-                                <div className="flex items-center space-x-2">
-                                    <span className="text-sm text-muted-foreground">
-                                        {selectedBuilding.riskData.STURM_TEXT || 'N/A'}
-                                    </span>
+
+                                {/* Wind Risk */}
+                                <div className={`${riskMode === 'wind' ? 'opacity-100' : 'opacity-50'}`}>
+                                    <h4 className={`font-medium mb-1 ${riskMode === 'wind' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                        Risiko Sturm
+                                    </h4>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm text-muted-foreground">
+                                            {selectedBuilding.riskData.STURM_TEXT || 'N/A'}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
                             </div>
                         )}
                     </div>
