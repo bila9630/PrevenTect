@@ -40,7 +40,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [showDamageOptions, setShowDamageOptions] = useState<boolean>(false);
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
-  const [conversationState, setConversationState] = useState<'initial' | 'damage_selected' | 'description_given' | 'date_needed'>('initial');
+  const [conversationState, setConversationState] = useState<'initial' | 'damage_selected' | 'description_given' | 'date_needed' | 'date_selected'>('initial');
   const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
   const { toast } = useToast();
   const { sendWithFunctions } = useOpenAI(apiKey);
@@ -448,16 +448,16 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                               isUser: true,
                             };
                             
-                            // Add bot confirmation
-                            const botConfirmMessage: Message = {
+                            // Add bot asking for images
+                            const botImageMessage: Message = {
                               id: (Date.now() + 1).toString(),
-                              text: `Vielen Dank! Ihre Schadensmeldung wurde erfasst. Das System wird nun die Daten verarbeiten und Sie erhalten weitere Informationen per E-Mail.`,
+                              text: `Können Sie Bilder vom Schaden hochladen? Das würde bei der Bewertung helfen.`,
                               timestamp: new Date(),
                               isUser: false,
                             };
                             
-                            setMessages(prev => [...prev, userDateMessage, botConfirmMessage]);
-                            setConversationState('initial');
+                            setMessages(prev => [...prev, userDateMessage, botImageMessage]);
+                            setConversationState('date_selected');
                           }
                         }}
                         disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
