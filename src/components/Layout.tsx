@@ -14,12 +14,9 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Header with branding and navigation */}
       <header className="h-16 flex items-center px-6 border-b border-border bg-background/50 backdrop-blur-sm">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-primary shadow-lg shadow-primary/30"></div>
             <h1 className="text-xl font-bold text-foreground tracking-wide">
-              GVB
+              PrevenTect
             </h1>
-          </div>
 
           <nav className="flex items-center gap-4">
             <Link
