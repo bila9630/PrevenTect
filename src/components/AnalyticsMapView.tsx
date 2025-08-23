@@ -76,8 +76,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 const el = document.createElement('div');
                 el.className = 'dangerous-building-marker';
                 el.style.backgroundColor = '#dc2626'; // Red color for danger
-                el.style.width = '20px';
-                el.style.height = '20px';
+                el.style.width = '12px';
+                el.style.height = '12px';
                 el.style.borderRadius = '50%';
                 el.style.border = '3px solid white';
                 el.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.6)';
@@ -142,8 +142,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         'circle-radius': {
                             base: 1.75,
                             stops: [
-                                [12, 60],
-                                [22, 200]
+                                [12, 30],
+                                [22, 100]
                             ]
                         },
                         'circle-color': '#dc2626',
@@ -163,8 +163,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         'circle-radius': {
                             base: 1.75,
                             stops: [
-                                [12, 80],
-                                [22, 250]
+                                [12, 40],
+                                [22, 125]
                             ]
                         },
                         'circle-color': '#dc2626',
