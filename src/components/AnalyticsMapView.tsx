@@ -715,7 +715,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {/* Risk Mode Toggle */}
-                        <div className="flex items-center space-x-3 mb-6">
+                        <div className="flex items-center space-x-3 mb-8">
                             <button
                                 onClick={() => setRiskMode('water')}
                                 className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
