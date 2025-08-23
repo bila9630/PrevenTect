@@ -143,13 +143,20 @@ const Analytics = () => {
             dangerousBuildings.map(async (building: any) => {
               try {
                 const address = building.attributes.ADRESSE;
-                const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${localStorage.getItem('mapbox-token')}`;
+                // Add "Bern" to ensure we get Bern addresses and use proximity to Bern center
+                const searchQuery = `${address}, Bern`;
+                const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${localStorage.getItem('mapbox-token')}&proximity=7.4474,46.9480&bbox=7.3000,46.8000,7.6000,47.1000`;
                 const geocodeResponse = await fetch(geocodeUrl);
                 const geocodeData = await geocodeResponse.json();
 
                 if (geocodeData.features && geocodeData.features.length > 0) {
                   const [lng, lat] = geocodeData.features[0].center;
-                  return { lat, lng, address };
+                  return { 
+                    lat, 
+                    lng, 
+                    address,
+                    riskData: building.attributes
+                  };
                 }
                 return null;
               } catch (error) {
@@ -188,7 +195,7 @@ const Analytics = () => {
     setShowResults(false);
     
     // Center map on Brückenstrasse 73, 3005 Bern (coordinates: 7.4333, 46.9548)
-    mapRef.current?.flyTo([46.9548, 7.4333], 18);
+    mapRef.current?.flyTo([7.4333, 46.9548], 14);
     
     // Always use the hardcoded address for building search
     searchBuildings("Brückenstrasse 73, 3005 Bern");

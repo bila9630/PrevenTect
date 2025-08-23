@@ -11,7 +11,7 @@ interface AnalyticsMapViewProps {
 
 interface AnalyticsMapViewRef {
     flyTo: (coordinates: [number, number], zoom?: number) => void;
-    addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => void;
+    addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => void;
     clearMarkers: () => void;
     focusOnLocation: (coordinates: [number, number]) => void;
 }
@@ -22,6 +22,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [mapboxToken, setMapboxToken] = useState('');
     const [isTokenSet, setIsTokenSet] = useState(false);
     const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
+    const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
 
     // Load cached token on component mount
     useEffect(() => {
@@ -53,13 +54,16 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 });
             }
         },
-        addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => {
+        addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => {
             if (!map.current) return;
 
             // Clear existing markers first
             markers.forEach(marker => marker.remove());
 
             // Remove existing circle layers and sources
+            if (map.current.getLayer('dangerous-building-ripple')) {
+                map.current.removeLayer('dangerous-building-ripple');
+            }
             if (map.current.getLayer('dangerous-building-circles')) {
                 map.current.removeLayer('dangerous-building-circles');
             }
@@ -69,127 +73,67 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             // Add new markers for dangerous buildings
             const newMarkers = coordinates.map(coord => {
-                // Create custom marker element for dangerous buildings
+                // Create custom marker element using SVG pin with bottom anchor
                 const el = document.createElement('div');
                 el.className = 'dangerous-building-marker';
-                el.style.backgroundColor = '#dc2626'; // Red color for danger
                 el.style.width = '20px';
-                el.style.height = '20px';
-                el.style.borderRadius = '50%';
-                el.style.border = '3px solid white';
-                el.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.6)';
+                el.style.height = '24px';
                 el.style.cursor = 'pointer';
-                el.style.animation = 'pulse 2s infinite';
-
-                // Add pulsing animation for dangerous buildings
-                if (!document.getElementById('danger-marker-styles')) {
-                    const style = document.createElement('style');
-                    style.id = 'danger-marker-styles';
-                    style.textContent = `
-            @keyframes pulse {
-              0% { transform: scale(1); box-shadow: 0 4px 12px rgba(220, 38, 38, 0.6); }
-              50% { transform: scale(1.1); box-shadow: 0 6px 16px rgba(220, 38, 38, 0.8); }
-              100% { transform: scale(1); box-shadow: 0 4px 12px rgba(220, 38, 38, 0.6); }
-            }
-          `;
-                    document.head.appendChild(style);
+                el.style.display = 'block';
+                
+                // Determine marker color by water damage risk
+                const water = Number(coord.riskData?.HOCHWASSER_FLIESSGEWAESSER);
+                let fillColor = '#dc2626'; // red for 200cm+
+                if (!Number.isNaN(water)) {
+                    if (water >= 200) {
+                        fillColor = '#dc2626';
+                    } else if (water >= 100) {
+                        fillColor = '#eab308'; // yellow for 100-199cm
+                    }
                 }
+                
+                // SVG pin (small, crisp) - tip at bottom center
+                el.innerHTML = `
+                  <svg width="20" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px rgba(220,38,38,0.6));">
+                    <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="${fillColor}" stroke="white" stroke-width="1.5" />
+                  </svg>
+                `;
 
-                const marker = new mapboxgl.Marker(el)
+                // Add click handler to marker
+                el.addEventListener('click', () => {
+                    setSelectedBuilding({
+                        address: coord.address,
+                        riskData: coord.riskData
+                    });
+                });
+
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
                     .setLngLat([coord.lng, coord.lat])
-                    .setPopup(
-                        new mapboxgl.Popup({ offset: 25 }).setHTML(
-                            `<div style="font-size: 14px; font-weight: 500; color: #dc2626;">
-                <strong>⚠️ Dangerous Building</strong><br/>
-                ${coord.address}
-              </div>`
-                        )
-                    )
                     .addTo(map.current!);
 
                 return marker;
             });
 
-            // Add danger zone circles around buildings
+            // Fly to show all markers
             if (coordinates.length > 0) {
-                const circleFeatures = coordinates.map(coord => ({
-                    type: 'Feature' as const,
-                    geometry: {
-                        type: 'Point' as const,
-                        coordinates: [coord.lng, coord.lat]
-                    },
-                    properties: {
-                        address: coord.address
-                    }
-                }));
-
-                map.current.addSource('dangerous-building-circles', {
-                    type: 'geojson',
-                    data: {
-                        type: 'FeatureCollection',
-                        features: circleFeatures
-                    }
-                });
-
-                map.current.addLayer({
-                    id: 'dangerous-building-circles',
-                    type: 'circle',
-                    source: 'dangerous-building-circles',
-                    paint: {
-                        'circle-radius': {
-                            base: 1.75,
-                            stops: [
-                                [12, 60],
-                                [22, 200]
-                            ]
-                        },
-                        'circle-color': '#dc2626',
-                        'circle-opacity': 0.15,
-                        'circle-stroke-width': 3,
-                        'circle-stroke-color': '#dc2626',
-                        'circle-stroke-opacity': 0.8
-                    }
-                });
-
-                // Add animated ripple effect
-                map.current.addLayer({
-                    id: 'dangerous-building-ripple',
-                    type: 'circle',
-                    source: 'dangerous-building-circles',
-                    paint: {
-                        'circle-radius': {
-                            base: 1.75,
-                            stops: [
-                                [12, 80],
-                                [22, 250]
-                            ]
-                        },
-                        'circle-color': '#dc2626',
-                        'circle-opacity': 0.05,
-                        'circle-stroke-width': 1,
-                        'circle-stroke-color': '#dc2626',
-                        'circle-stroke-opacity': 0.3
-                    }
-                });
-
-                // Fly to show all markers
                 if (coordinates.length === 1) {
-                    // Single marker: zoom to it
+                    // Single marker: zoom to it (gentler zoom for better interaction)
                     map.current.flyTo({
                         center: [coordinates[0].lng, coordinates[0].lat],
-                        zoom: 16,
-                        duration: 2000,
-                        pitch: 45
+                        zoom: 14,
+                        duration: 1200,
+                        pitch: 30
                     });
                 } else {
-                    // Multiple markers: fit bounds
+                    // Multiple markers: fit bounds but cap maximum zoom
                     const bounds = new mapboxgl.LngLatBounds();
                     coordinates.forEach(coord => {
                         bounds.extend([coord.lng, coord.lat]);
                     });
                     map.current.fitBounds(bounds, {
-                        padding: 100,
-                        duration: 2000
+                        padding: 120,
+                        duration: 1200,
+                        maxZoom: 14
                     });
                 }
             }
@@ -199,6 +143,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         clearMarkers: () => {
             markers.forEach(marker => marker.remove());
             setMarkers([]);
+            setSelectedBuilding(null);
 
             // Remove circle layers and sources
             if (map.current?.getLayer('dangerous-building-ripple')) {
@@ -392,10 +337,16 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
     useEffect(() => {
         return () => {
-            markers.forEach(marker => marker.remove());
-            map.current?.remove();
+            try {
+                map.current?.remove();
+                // ensure reference is cleared to avoid double-destroy
+                // @ts-ignore
+                map.current = null;
+            } catch (e) {
+                console.error('Error removing map on unmount:', e);
+            }
         };
-    }, [markers]);
+    }, []);
 
     if (!isTokenSet) {
         return (
@@ -463,15 +414,72 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 Analytics Map
             </div>
 
+            {/* Risk Information Panel */}
+            {selectedBuilding && (
+                <div className="absolute top-4 right-4 w-80 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-foreground">Risks</h3>
+                        <button 
+                            onClick={() => setSelectedBuilding(null)}
+                            className="text-muted-foreground hover:text-foreground text-sm p-1"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                        <div>
+                            <h4 className="font-medium text-foreground mb-1">Address</h4>
+                            <p className="text-sm text-muted-foreground">{selectedBuilding.address}</p>
+                        </div>
+                        
+                        {selectedBuilding.riskData && (
+                            <>
+                                <div>
+                                    <h4 className="font-medium text-foreground mb-1">Wind Speed Risk</h4>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                                            {selectedBuilding.riskData.STURM}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">
+                                            {selectedBuilding.riskData.STURM_TEXT}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h4 className="font-medium text-foreground mb-1">Water Damage Risk</h4>
+                                    <div className="flex items-center space-x-2">
+                                        {(() => {
+                                            const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
+                                            const text = selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE;
+                                            let colorClass = "text-muted-foreground";
+                                            
+                                            if (value >= 200) {
+                                                colorClass = "text-red-500";
+                                            } else if (value >= 100) {
+                                                colorClass = "text-yellow-500";
+                                            }
+                                            
+                                            return (
+                                                <span className={`text-sm ${colorClass}`}>
+                                                    {text || 'N/A'}
+                                                </span>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Legend for dangerous buildings */}
             <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3 text-xs">
                 <div className="flex items-center space-x-2 mb-1">
                     <div className="w-3 h-3 bg-red-600 rounded-full border border-white"></div>
                     <span>Dangerous Buildings</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 border-2 border-red-600 rounded-full bg-red-600/20"></div>
-                    <span>Risk Zone</span>
                 </div>
             </div>
         </div>
