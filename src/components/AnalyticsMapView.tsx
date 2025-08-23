@@ -11,7 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Tables } from '@/integrations/supabase/types';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+// Removed dialog imports; images will be shown inline in the claims panel
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 
 interface AnalyticsMapViewProps {
     onTokenSet?: (token: string) => void;
@@ -60,9 +61,12 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [claimsError, setClaimsError] = useState<string | null>(null);
     const [showClaimsPanel, setShowClaimsPanel] = useState(true);
     const [selectedClaim, setSelectedClaim] = useState<Tables<'claims'> | null>(null);
-    const [claimDialogOpen, setClaimDialogOpen] = useState(false);
     const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [imageLoading, setImageLoading] = useState(false);
+    // Centered image viewer state
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     // Load cached token on component mount
     useEffect(() => {
@@ -392,10 +396,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         checkClaim();
     }, [selectedBuilding]);
 
-    // Load images for selected claim when dialog opens and claim is set
+    // Load images for selected claim when a claim is selected (inline viewer)
     useEffect(() => {
         const loadImages = async () => {
-            if (!claimDialogOpen || !selectedClaim) return;
+            if (!selectedClaim) return;
             try {
                 setImageLoading(true);
                 setImageUrls([]);
@@ -413,13 +417,49 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         if (data?.signedUrl) signedUrls.push(data.signedUrl);
                     }
                     setImageUrls(signedUrls);
+                    setCurrentImageIndex(0);
                 }
             } finally {
                 setImageLoading(false);
             }
         };
         loadImages();
-    }, [claimDialogOpen, selectedClaim]);
+    }, [selectedClaim]);
+
+    // Keyboard handling: only Escape to close (arrow keys handled by carousel)
+    useEffect(() => {
+        if (!viewerOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setViewerOpen(false);
+                setSelectedClaim(null);
+                setImageUrls([]);
+                setImageLoading(false);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [viewerOpen]);
+
+    // Sync carousel index state
+    useEffect(() => {
+        if (!carouselApi) return;
+        const onSelect = () => setCurrentImageIndex(carouselApi.selectedScrollSnap());
+        onSelect();
+        carouselApi.on('select', onSelect);
+        return () => {
+            try { carouselApi.off('select', onSelect); } catch (e) {
+                // no-op
+            }
+        };
+    }, [carouselApi]);
+
+    // When images load or viewer opens, scroll carousel to current index
+    useEffect(() => {
+        if (viewerOpen && carouselApi && imageUrls.length > 0) {
+            carouselApi.scrollTo(currentImageIndex);
+        }
+    }, [viewerOpen, carouselApi, imageUrls.length, currentImageIndex]);
 
     // Expose map controls to parent component
     useImperativeHandle(ref, () => ({
@@ -815,6 +855,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                 )}
                             </div>
 
+                            {/* Always show the list; clicking opens centered viewer */}
                             {claimsLoading && (
                                 <div className="space-y-3">
                                     <Skeleton className="h-16 w-full" />
@@ -838,7 +879,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                             className="rounded-md border border-border p-3 bg-card/60 cursor-pointer hover:border-accent/60"
                                             onClick={() => {
                                                 setSelectedClaim(c);
-                                                setClaimDialogOpen(true);
+                                                setViewerOpen(true);
+                                                setCurrentImageIndex(0);
                                             }}
                                         >
                                             <div className="flex items-center justify-between mb-1">
@@ -1018,66 +1060,66 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 </Card>
             </div>
 
-            {/* Claim Details Dialog */}
-            <Dialog
-                open={claimDialogOpen}
-                onOpenChange={(v) => {
-                    setClaimDialogOpen(v);
-                    if (!v) {
-                        setSelectedClaim(null);
-                        setImageUrls([]);
-                        setImageLoading(false);
-                    }
-                }}
-            >
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center justify-between pr-10">
-                            <span>{selectedClaim?.damage_type || 'Schadenmeldung'}</span>
-                            <span className="text-sm text-muted-foreground">
-                                {selectedClaim?.claim_date
-                                    ? new Date(selectedClaim.claim_date).toLocaleDateString()
-                                    : selectedClaim
-                                        ? new Date(selectedClaim.created_at).toLocaleDateString()
-                                        : ''}
-                            </span>
-                        </DialogTitle>
-                        {selectedClaim?.location_name && (
-                            <DialogDescription>{selectedClaim.location_name}</DialogDescription>
-                        )}
-                    </DialogHeader>
+            {/* Centered image carousel viewer */}
+            {viewerOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div
+                        className="absolute inset-0 bg-black/60"
+                        onClick={() => {
+                            setViewerOpen(false);
+                            setSelectedClaim(null);
+                            setImageUrls([]);
+                            setImageLoading(false);
+                        }}
+                    />
+                    <div className="relative bg-background/95 backdrop-blur-md border border-border rounded-lg shadow-2xl max-w-5xl w-[92vw] max-h-[86vh] p-4 flex flex-col">
+                        <button
+                            type="button"
+                            aria-label="Schließen"
+                            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                                setViewerOpen(false);
+                                setSelectedClaim(null);
+                                setImageUrls([]);
+                                setImageLoading(false);
+                            }}
+                        >
+                            ✕
+                        </button>
 
-                    {selectedClaim?.description && (
-                        <p className="text-sm text-foreground/90 whitespace-pre-line mb-3">
-                            {selectedClaim.description}
-                        </p>
-                    )}
+                        <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+                            {imageLoading ? (
+                                <div className="w-full flex items-center justify-center">
+                                    <Skeleton className="w-[70vw] max-w-4xl h-[60vh]" />
+                                </div>
+                            ) : imageUrls.length > 0 ? (
+                                <Carousel setApi={setCarouselApi} opts={{ loop: true }} className="w-full">
+                                    <CarouselContent className="items-center">
+                                        {imageUrls.map((url, idx) => (
+                                            <CarouselItem key={idx} className="flex items-center justify-center">
+                                                <img
+                                                    src={url}
+                                                    alt={`Claim image ${idx + 1}`}
+                                                    className="max-w-[80vw] max-h-[70vh] object-contain rounded-md border border-border bg-black/20"
+                                                />
+                                            </CarouselItem>
+                                        ))}
+                                    </CarouselContent>
+                                    <CarouselPrevious className="left-2" />
+                                    <CarouselNext className="right-2" />
+                                </Carousel>
+                            ) : (
+                                <div className="text-sm text-muted-foreground">Keine Bilder vorhanden.</div>
+                            )}
+                        </div>
 
-                    <div className="space-y-2">
-                        {imageLoading && (
-                            <div className="grid grid-cols-2 gap-3">
-                                <Skeleton className="h-32 w-full" />
-                                <Skeleton className="h-32 w-full" />
-                            </div>
-                        )}
-                        {!imageLoading && imageUrls.length > 0 && (
-                            <div className="grid grid-cols-2 gap-3">
-                                {imageUrls.map((url, idx) => (
-                                    <img
-                                        key={idx}
-                                        src={url}
-                                        alt={`Claim image ${idx + 1}`}
-                                        className="h-40 w-full object-cover rounded-md border border-border"
-                                    />
-                                ))}
-                            </div>
-                        )}
-                        {!imageLoading && selectedClaim && (!selectedClaim.image_paths || selectedClaim.image_paths.length === 0) && (
-                            <div className="text-sm text-muted-foreground">Keine Bilder vorhanden.</div>
-                        )}
+                        {/* Footer with counter */}
+                        <div className="mt-3 text-center text-xs text-muted-foreground">
+                            {imageUrls.length > 0 && !imageLoading ? `${currentImageIndex + 1} / ${imageUrls.length}` : ''}
+                        </div>
                     </div>
-                </DialogContent>
-            </Dialog>
+                </div>
+            )}
         </div>
     );
 });
