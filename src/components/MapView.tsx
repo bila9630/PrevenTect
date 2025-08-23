@@ -12,6 +12,8 @@ interface MapViewProps {
 interface MapViewRef {
   flyTo: (coordinates: [number, number], zoom?: number) => void;
   toggleRain: (enabled: boolean) => void;
+  addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => void;
+  clearMarkers: () => void;
 }
 
 const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
@@ -31,6 +33,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
   const [isRainEnabled, setIsRainEnabled] = useState(false);
+  const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
 
   // Rain effect helper function
   const toggleRainEffect = (enabled: boolean) => {
@@ -80,8 +83,39 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
     toggleRain: (enabled: boolean) => {
       setIsRainEnabled(enabled);
       toggleRainEffect(enabled);
+    },
+    addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => {
+      if (!map.current) return;
+      
+      // Clear existing markers first
+      markers.forEach(marker => marker.remove());
+      
+      // Add new markers
+      const newMarkers = coordinates.map(coord => {
+        const el = document.createElement('div');
+        el.className = 'marker';
+        el.style.backgroundColor = '#ef4444';
+        el.style.width = '12px';
+        el.style.height = '12px';
+        el.style.borderRadius = '50%';
+        el.style.border = '2px solid white';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat([coord.lng, coord.lat])
+          .setPopup(new mapboxgl.Popup().setHTML(`<div style="font-size: 12px;">${coord.address}</div>`))
+          .addTo(map.current!);
+          
+        return marker;
+      });
+      
+      setMarkers(newMarkers);
+    },
+    clearMarkers: () => {
+      markers.forEach(marker => marker.remove());
+      setMarkers([]);
     }
-  }), []);
+  }), [markers]);
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {
