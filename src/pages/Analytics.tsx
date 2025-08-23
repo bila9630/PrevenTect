@@ -98,66 +98,20 @@ const Analytics = () => {
 
     setIsLoading(true);
     try {
-      // Hardcoded target location for now
+      // Hardcoded address for now - can be optimized later with intelligent parser
       const targetAddress = "Felshaldenweg 18, 3004 Bern";
-      const targetCoords = [7.4333, 46.9548]; // lat/lng for Felshaldenweg area
-      const targetNumber = 18;
+      const targetNumber = 73;
       
-      // Test with a simple known query first to ensure API works
-      console.log("Testing with simple query first...");
-      const testWhere = `ADRESSE LIKE '%Felshaldenweg%' AND ADRESSE LIKE '%3004 Bern%'`;
-      const testUrl = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=${encodeURIComponent(testWhere)}&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
-      
-      const testResponse = await fetch(testUrl);
-      const testData = await testResponse.json();
-      console.log("Test API Response:", testData);
-      
-      if (!testData.features || testData.features.length === 0) {
-        console.log("Test query returned no results. API might be down or query format changed.");
-        toast.error('API test failed - no buildings found');
-        return;
-      }
+      // Search for buildings in the 3004 Bern postal area (around Felshaldenweg)
+      const nearbyStreets = ['Felshaldenweg', 'Schwarztorstrasse', 'Monbijoustrasse', 'Eigerstrasse', 'Helvetiaplatz'];
+      const streetConditions = nearbyStreets.map(street => `ADRESSE LIKE '%${street}%'`).join(' OR ');
+      const where = `(${streetConditions}) AND ADRESSE LIKE '%3004 Bern%'`;
+      const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=${encodeURIComponent(where)}&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
+      console.log("API::::::", url)
 
-      // Now get streets within 1km radius using geocoding
-      console.log("Getting streets within 1km radius...");
-      const radiusSearchUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/street.json?proximity=${targetCoords[0]},${targetCoords[1]}&bbox=${targetCoords[0]-0.01},${targetCoords[1]-0.008},${targetCoords[0]+0.01},${targetCoords[1]+0.008}&access_token=${localStorage.getItem('mapbox-token')}&limit=10`;
-      
-      const radiusResponse = await fetch(radiusSearchUrl);
-      const radiusData = await radiusResponse.json();
-      
-      // Extract street names from the geocoding results
-      const streets = radiusData.features?.map((feature: any) => {
-        const streetName = feature.text || feature.place_name?.split(',')[0];
-        return streetName;
-      }).filter((street: string) => street && !street.includes('Bern')) || [];
-      
-      // Add our known nearby streets as fallback
-      const knownStreets = ['Felshaldenweg', 'Schwarztorstrasse', 'Monbijoustrasse', 'Eigerstrasse', 'Helvetiaplatz'];
-      const allStreets = [...new Set([...streets, ...knownStreets])];
-      
-      console.log("Streets to query:", allStreets);
-      
-      // Query each street individually to get more comprehensive results
-      const allBuildings = [];
-      for (const street of allStreets) {
-        console.log(`Querying ${street}...`);
-        const streetWhere = `ADRESSE LIKE '%${street}%' AND ADRESSE LIKE '%300_ Bern%'`;
-        const streetUrl = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=${encodeURIComponent(streetWhere)}&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
-        
-        try {
-          const streetResponse = await fetch(streetUrl);
-          const streetData = await streetResponse.json();
-          if (streetData.features && streetData.features.length > 0) {
-            allBuildings.push(...streetData.features);
-            console.log(`Found ${streetData.features.length} buildings on ${street}`);
-          }
-        } catch (error) {
-          console.error(`Error querying ${street}:`, error);
-        }
-      }
-      
-      console.log(`Total buildings found: ${allBuildings.length}`);
-      const data = { features: allBuildings };
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log("DATA::::::", data)
 
       if (data.features && data.features.length > 0) {
         // Extract house numbers and sort by proximity to target number
