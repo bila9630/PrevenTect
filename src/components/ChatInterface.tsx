@@ -347,13 +347,16 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
     timers.push(window.setTimeout(() => advanceStep(2), 3000));
     const start = performance.now();
 
+    // Generate unique claim ID for linking images and data
+    const claimId = `claim-${Date.now()}`;
+
     // Start background image upload to Supabase without blocking UI
-    const uploadImagesAsync = async () => {
-      if (uploadedImages.length === 0) return;
+    const uploadImagesAsync = async (): Promise<string[]> => {
+      if (uploadedImages.length === 0) return [];
       
       try {
         const uploadPromises = uploadedImages.map(async (file, index) => {
-          const fileName = `${Date.now()}-${index}-${file.name}`;
+          const fileName = `${claimId}-${index}-${file.name}`;
           const { error } = await supabase.storage
             .from('claims-uploads')
             .upload(fileName, file);
@@ -362,25 +365,27 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
           return fileName;
         });
 
-        await Promise.all(uploadPromises);
+        const uploadedFilePaths = await Promise.all(uploadPromises);
         toast({ 
           description: `${uploadedImages.length} Bild(er) erfolgreich hochgeladen` 
         });
+        return uploadedFilePaths;
       } catch (error) {
         console.error('Upload error:', error);
         toast({ 
           description: 'Bilder-Upload fehlgeschlagen', 
           variant: 'destructive' 
         });
+        return [];
       }
     };
 
-    // Start upload in background
-    uploadImagesAsync();
-
-    // Save claim data to Supabase
-    const saveClaimData = async () => {
+    // Save claim data to Supabase with linked images
+    const saveClaimWithImages = async () => {
       try {
+        // Upload images first and get their paths
+        const imagePaths = await uploadImagesAsync();
+        
         const { error } = await supabase
           .from('claims')
           .insert({
@@ -389,13 +394,14 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
             damage_type: selectedDamageType || 'Unbekannt',
             description: damageDescription,
             claim_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
-            images_count: uploadedImages.length
+            images_count: uploadedImages.length,
+            image_paths: imagePaths
           });
 
         if (error) throw error;
         
         toast({ 
-          description: 'Schadensfall erfolgreich gespeichert' 
+          description: 'Schadensfall mit Bildern erfolgreich gespeichert' 
         });
       } catch (error) {
         console.error('Save claim error:', error);
@@ -406,8 +412,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
       }
     };
 
-    // Save claim data in background
-    saveClaimData();
+    // Save claim data with linked images in background
+    saveClaimWithImages();
 
     // Build context for estimation
     const ctx: {
