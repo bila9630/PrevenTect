@@ -391,7 +391,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
           .from('claims')
           .insert({
             location_name: selectedLocation,
-            coordinates: selectedCoordinates ? JSON.stringify(selectedCoordinates) : null,
+            coordinates: selectedCoordinates,
             damage_type: selectedDamageType || 'Unbekannt',
             description: damageDescription,
             claim_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
