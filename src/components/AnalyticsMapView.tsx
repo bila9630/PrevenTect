@@ -60,6 +60,9 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             markers.forEach(marker => marker.remove());
 
             // Remove existing circle layers and sources
+            if (map.current.getLayer('dangerous-building-ripple')) {
+                map.current.removeLayer('dangerous-building-ripple');
+            }
             if (map.current.getLayer('dangerous-building-circles')) {
                 map.current.removeLayer('dangerous-building-circles');
             }
@@ -174,22 +177,23 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
                 // Fly to show all markers
                 if (coordinates.length === 1) {
-                    // Single marker: zoom to it
+                    // Single marker: zoom to it (gentler zoom for better interaction)
                     map.current.flyTo({
                         center: [coordinates[0].lng, coordinates[0].lat],
-                        zoom: 16,
-                        duration: 2000,
-                        pitch: 45
+                        zoom: 14,
+                        duration: 1200,
+                        pitch: 30
                     });
                 } else {
-                    // Multiple markers: fit bounds
+                    // Multiple markers: fit bounds but cap maximum zoom
                     const bounds = new mapboxgl.LngLatBounds();
                     coordinates.forEach(coord => {
                         bounds.extend([coord.lng, coord.lat]);
                     });
                     map.current.fitBounds(bounds, {
-                        padding: 100,
-                        duration: 2000
+                        padding: 120,
+                        duration: 1200,
+                        maxZoom: 14
                     });
                 }
             }
