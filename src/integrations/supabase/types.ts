@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      claims: {
+        Row: {
+          claim_date: string | null
+          coordinates: Json | null
+          created_at: string
+          damage_type: string
+          description: string | null
+          id: string
+          images_count: number | null
+          location_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          claim_date?: string | null
+          coordinates?: Json | null
+          created_at?: string
+          damage_type: string
+          description?: string | null
+          id?: string
+          images_count?: number | null
+          location_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          claim_date?: string | null
+          coordinates?: Json | null
+          created_at?: string
+          damage_type?: string
+          description?: string | null
+          id?: string
+          images_count?: number | null
+          location_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
