@@ -102,10 +102,10 @@ const Analytics = () => {
       const targetAddress = "Felshaldenweg 18, 3004 Bern";
       const targetNumber = 73;
       
-      // Search for buildings in nearby areas around Felshaldenweg, including surrounding streets
-      const nearbyStreets = ['Felshaldenweg', 'Kirchenfeldbrücke', 'Thunstrasse', 'Kornhausbrücke', 'Effingerstrasse'];
+      // Search for buildings in the 3004 Bern postal area (around Felshaldenweg)
+      const nearbyStreets = ['Felshaldenweg', 'Schwarztorstrasse', 'Monbijoustrasse', 'Eigerstrasse', 'Helvetiaplatz'];
       const streetConditions = nearbyStreets.map(street => `ADRESSE LIKE '%${street}%'`).join(' OR ');
-      const where = `(${streetConditions}) AND ADRESSE LIKE '% Bern%'`;
+      const where = `(${streetConditions}) AND ADRESSE LIKE '%3004 Bern%'`;
       const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=${encodeURIComponent(where)}&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
       console.log("API::::::", url)
 
