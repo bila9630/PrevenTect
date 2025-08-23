@@ -45,18 +45,6 @@ const Index = () => {
     }
   };
 
-  const handleShowDangerousBuildings = async (buildings: any[]) => {
-    if (!mapRef.current) return;
-
-    try {
-      await mapRef.current.addDangerousBuildings(buildings);
-      return { success: true, count: buildings.length };
-    } catch (error) {
-      console.error('Error showing dangerous buildings:', error);
-      return { success: false, error: "Failed to show dangerous buildings" };
-    }
-  };
-
   return (
     <div className="h-full flex">
       {/* Map Section */}
@@ -69,11 +57,7 @@ const Index = () => {
       {/* Chat Section */}
       <div className="flex-[2] p-4 pl-2">
         <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
-          <ChatInterface 
-            onLocationRequest={handleLocationRequest} 
-            onRainToggle={handleRainToggle}
-            onShowDangerousBuildings={handleShowDangerousBuildings}
-          />
+          <ChatInterface onLocationRequest={handleLocationRequest} onRainToggle={handleRainToggle} />
         </div>
       </div>
     </div>

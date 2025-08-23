@@ -5,7 +5,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, MapPin, KeyRound } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
-import { dangerousBuildingsData } from '@/data/buildings';
 
 interface Message {
   id: string;
@@ -17,10 +16,9 @@ interface Message {
 interface ChatInterfaceProps {
   onLocationRequest?: (address: string) => Promise<{ success: boolean; location?: string; coordinates?: number[]; error?: string }>;
   onRainToggle?: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
-  onShowDangerousBuildings?: (buildings: any[]) => Promise<{ success: boolean; count?: number; error?: string }>;
 }
 
-const ChatInterface = ({ onLocationRequest, onRainToggle, onShowDangerousBuildings }: ChatInterfaceProps) => {
+const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -90,25 +88,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onShowDangerousBuildin
     if (optionText === 'Schaden melden') {
       botResponse = 'Wo wohnst du?';
     } else if (optionText === 'Schadensimulation') {
-      botResponse = 'Ich kann dir bei der Schadensimulation helfen. Welche Art von Schaden möchtest du simulieren? Ich kann auch gefährdete Gebäude in Bern auf der Karte anzeigen.';
-      
-      // Automatically show dangerous buildings for simulation
-      setTimeout(async () => {
-        if (onShowDangerousBuildings) {
-          try {
-            await onShowDangerousBuildings(dangerousBuildingsData);
-            const buildingsMessage: Message = {
-              id: (Date.now() + 100).toString(),
-              text: '🏠 Ich zeige dir gefährdete Gebäude in Bern mit roten Markierungen auf der Karte!',
-              timestamp: new Date(),
-              isUser: false,
-            };
-            setMessages(prev => [...prev, buildingsMessage]);
-          } catch (error) {
-            console.error('Error showing buildings:', error);
-          }
-        }
-      }, 1000);
+      botResponse = 'Ich kann dir bei der Schadensimulation helfen. Welche Art von Schaden möchtest du simulieren?';
     }
 
     // Add bot response
@@ -203,38 +183,6 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onShowDangerousBuildin
             const errorMessage: Message = {
               id: (Date.now() + 2).toString(),
               text: "❌ Entschuldigung, ich hatte Probleme dabei, diesen Ort zu finden. Bitte versuche es noch einmal.",
-              timestamp: new Date(),
-              isUser: false,
-            };
-            setMessages(prev => [...prev, errorMessage]);
-          }
-        } else {
-          const fallbackMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            text: "Ich bin mir nicht sicher, wie ich darauf antworten soll.",
-            timestamp: new Date(),
-            isUser: false,
-          };
-          setMessages(prev => [...prev, fallbackMessage]);
-        }
-      } else if (result.type === 'function_call' && result.name === 'show_dangerous_buildings') {
-        const buildings = result.args.buildings;
-        if (onShowDangerousBuildings) {
-          try {
-            const buildingsResult = await onShowDangerousBuildings(buildings);
-            const buildingsMessage: Message = {
-              id: (Date.now() + 1).toString(),
-              text: buildingsResult.success
-                ? `🏠 Ich habe ${buildingsResult.count} gefährdete Gebäude auf der Karte mit roten Markierungen angezeigt!`
-                : `❌ ${buildingsResult.error || 'Konnte die gefährdeten Gebäude nicht anzeigen.'}`,
-              timestamp: new Date(),
-              isUser: false,
-            };
-            setMessages(prev => [...prev, buildingsMessage]);
-          } catch (error) {
-            const errorMessage: Message = {
-              id: (Date.now() + 2).toString(),
-              text: "❌ Entschuldigung, ich hatte Probleme dabei, die gefährdeten Gebäude anzuzeigen. Bitte versuche es noch einmal.",
               timestamp: new Date(),
               isUser: false,
             };
