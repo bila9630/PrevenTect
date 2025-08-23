@@ -90,7 +90,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
           center: coordinates,
           zoom: zoom,
           pitch: 45,
-          duration: 3000,
+          duration: 2000,
           easing: (t) => t * (2 - t) // ease-out quadratic for smoother animation
         });
 

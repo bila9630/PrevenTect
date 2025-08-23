@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Send, MapPin, KeyRound, CalendarIcon, Upload, X, Loader2 } from 'lucide-react';
+import { Send, MapPin, CalendarIcon, Upload, X, Loader2 } from 'lucide-react';
+import ApiKeySetupCard from './ApiKeySetupCard';
 import EstimateResult from './EstimateResult';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
@@ -426,31 +427,17 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
       <div className="p-4 border-b border-border bg-card">
         <h2 className="text-lg font-semibold text-foreground">Chat</h2>
         <p className="text-sm text-muted-foreground">
-          Stelle Fragen zu den Kartendaten
+          Stell deine Fragen rund um Schaden, Deckung und Meldung
         </p>
       </div>
 
       {/* API Key Setup Card - Only shown when no key is set */}
       {!apiKey && (
-        <div className="m-4 p-4 bg-muted/50 border border-border rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <KeyRound className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-foreground">OpenAI API-Schlüssel erforderlich</h3>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Gib deinen OpenAI API-Schlüssel ein, um KI-Antworten zu aktivieren
-          </p>
-          <div className="flex items-center gap-2">
-            <Input
-              type="password"
-              placeholder="sk-..."
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              className="bg-background border-border text-sm"
-            />
-            <Button size="sm" onClick={saveApiKey}>Speichern</Button>
-          </div>
-        </div>
+        <ApiKeySetupCard
+          value={apiKeyInput}
+          onValueChange={setApiKeyInput}
+          onSave={saveApiKey}
+        />
       )}
 
       {/* Messages */}
