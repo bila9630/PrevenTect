@@ -57,6 +57,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
   // Show a contextual "Danke" button after partner route is displayed
   const [showThanksOption, setShowThanksOption] = useState<boolean>(false);
   const [thanksMessageId, setThanksMessageId] = useState<string>('');
+  // Show simulation options after the follow-up question
+  const [showSimulationOptions, setShowSimulationOptions] = useState<boolean>(false);
   const { toast } = useToast();
   const { sendWithFunctions, estimateCoverage, generateRecommendations } = useOpenAI(apiKey);
 
@@ -167,6 +169,37 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
 
     setMessages(prev => [...prev, userMessage, botFollowUp]);
     setLastBotMessageId(botFollowUp.id);
+    setShowSimulationOptions(true);
+  };
+
+  const handleSimulationOption = (choice: 'yes' | 'no') => {
+    setShowSimulationOptions(false);
+
+    const userSelection: Message = {
+      id: Date.now().toString(),
+      text: choice === 'yes' ? 'Ja, sehr gerne! 😊' : 'Nee, kein Bock',
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    if (choice === 'yes') {
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Ich kann dir bei der Schadensimulation helfen. Welche Art von Schaden möchtest du simulieren?',
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, userSelection, botMsg]);
+      setLastBotMessageId(botMsg.id);
+    } else {
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Alles klar! Wenn Sie später Lust haben, können wir jederzeit eine Simulation starten.',
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, userSelection, botMsg]);
+    }
   };
 
   // Produce a preliminary insurance estimate and finalize the flow
@@ -697,6 +730,28 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                     className="text-left justify-start text-sm w-fit"
                   >
                     Danke
+                  </Button>
+                </div>
+              )}
+
+              {/* Simulation options after follow-up */}
+              {!message.isUser && message.id === lastBotMessageId && showSimulationOptions && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSimulationOption('yes')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Ja, sehr gerne! 😊
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSimulationOption('no')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Nee, kein Bock
                   </Button>
                 </div>
               )}
