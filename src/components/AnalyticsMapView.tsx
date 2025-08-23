@@ -63,15 +63,9 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             inner.style.willChange = 'transform';
 
             const updateMarkerSize = (isSelected: boolean) => {
-                if (isSelected) {
-                    inner.style.transform = 'scale(1.4)';
-                    el.style.zIndex = '1000';
-                    el.setAttribute('data-selected', 'true');
-                } else {
-                    inner.style.transform = 'scale(1)';
-                    el.style.zIndex = '1';
-                    el.setAttribute('data-selected', 'false');
-                }
+                // No scaling to avoid position shifts; only adjust stacking and state
+                el.style.zIndex = isSelected ? '1000' : '1';
+                el.setAttribute('data-selected', isSelected ? 'true' : 'false');
             };
             
             let riskValue, minVal, maxVal, fillColor, shadowColor;
@@ -112,8 +106,6 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 if (container) {
                     container.querySelectorAll('.building-marker').forEach((node) => {
                         const n = node as HTMLDivElement;
-                        const innerEl = n.querySelector('.marker-inner') as HTMLDivElement | null;
-                        if (innerEl) innerEl.style.transform = 'scale(1)';
                         n.style.zIndex = '1';
                         n.setAttribute('data-selected', 'false');
                     });
@@ -184,8 +176,6 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         if (!selectedBuilding && mapContainer.current) {
             mapContainer.current.querySelectorAll('.building-marker').forEach((node) => {
                 const n = node as HTMLDivElement;
-                const innerEl = n.querySelector('.marker-inner') as HTMLDivElement | null;
-                if (innerEl) innerEl.style.transform = 'scale(1)';
                 n.style.zIndex = '1';
                 n.setAttribute('data-selected', 'false');
             });
