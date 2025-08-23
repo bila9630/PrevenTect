@@ -793,37 +793,54 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         {/* Send Info Button */}
                         <div className="mt-8 pt-6">
                             {(() => {
-                                const visibleMarkersCount = markersData.filter(coord => {
-                                    let riskValue;
-                                    if (riskMode === 'water') {
-                                        riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
-                                        return Number(riskValue) >= waterThreshold[0];
-                                    } else {
-                                        riskValue = coord.riskData?.STURM;
-                                        return Number(riskValue) >= windThreshold[0];
-                                    }
-                                }).length;
-                                
-                                const hasEnoughMarkers = visibleMarkersCount > 0;
-                                
-                                return (
-                                    <Button
-                                        className={`w-full py-3 px-4 font-medium ${
-                                            hasEnoughMarkers 
-                                                ? 'bg-red-600 hover:bg-red-700 text-white' 
-                                                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                                        }`}
-                                        disabled={!hasEnoughMarkers}
-                                        onClick={() => {
-                                            if (hasEnoughMarkers) {
-                                                // Handle send info action
-                                                console.log(`Sending info to ${visibleMarkersCount} properties`);
+                                if (selectedBuilding) {
+                                    // Show selected building address
+                                    return (
+                                        <Button
+                                            className="w-full py-3 px-4 font-medium bg-red-600 hover:bg-red-700 text-white"
+                                            onClick={() => {
+                                                console.log(`Sending info to ${selectedBuilding.address}`);
+                                            }}
+                                        >
+                                            Info an {selectedBuilding.address} senden!
+                                        </Button>
+                                    );
+                                } else {
+                                    // No selection - show count of visible markers
+                                    const visibleMarkersCount = markersData.filter(coord => {
+                                        let riskValue;
+                                        if (riskMode === 'water') {
+                                            riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
+                                            return Number(riskValue) >= waterThreshold[0];
+                                        } else {
+                                            riskValue = coord.riskData?.STURM;
+                                            return Number(riskValue) >= windThreshold[0];
+                                        }
+                                    }).length;
+                                    
+                                    const hasEnoughMarkers = visibleMarkersCount > 0;
+                                    
+                                    return (
+                                        <Button
+                                            className={`w-full py-3 px-4 font-medium ${
+                                                hasEnoughMarkers 
+                                                    ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                                    : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                            }`}
+                                            disabled={!hasEnoughMarkers}
+                                            onClick={() => {
+                                                if (hasEnoughMarkers) {
+                                                    console.log(`Sending info to ${visibleMarkersCount} properties`);
+                                                }
+                                            }}
+                                        >
+                                            {hasEnoughMarkers 
+                                                ? `Info an ${visibleMarkersCount} Liegenschaften senden!`
+                                                : 'Info an Liegenschaften senden'
                                             }
-                                        }}
-                                    >
-                                        Info an {visibleMarkersCount} Liegenschaften senden!
-                                    </Button>
-                                );
+                                        </Button>
+                                    );
+                                }
                             })()}
                         </div>
                     </CardContent>
