@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           damage_type: string
           description: string | null
+          gwr_egid: string | null
           id: string
           image_paths: string[] | null
           images_count: number | null
@@ -33,6 +34,7 @@ export type Database = {
           created_at?: string
           damage_type: string
           description?: string | null
+          gwr_egid?: string | null
           id?: string
           image_paths?: string[] | null
           images_count?: number | null
@@ -45,6 +47,7 @@ export type Database = {
           created_at?: string
           damage_type?: string
           description?: string | null
+          gwr_egid?: string | null
           id?: string
           image_paths?: string[] | null
           images_count?: number | null
