@@ -241,8 +241,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
       id: (Date.now() + 1).toString(),
       text:
         choice === 'do_nothing'
-          ? 'Verstanden. Das kann riskant sein – Dachlast und Eiszapfen können gefährlich werden. Wir merken das für die Auswertung.'
-          : 'Gute Wahl! Das reduziert Schäden durch Dachlast und herabfallenden Schnee. Wir merken das für die Auswertung.',
+          ? 'Verstanden. Bitte beachten Sie: Zu hohe Schneelast und Eiszapfen können gefährlich werden. Tipp: Schneelast beobachten und Gefahrenstellen sichern.'
+          : 'Gute Wahl! Das reduziert Schäden durch Dachlast und herabfallenden Schnee. So beugen Sie Risiken effektiv vor.',
       timestamp: new Date(),
       isUser: false,
     };
