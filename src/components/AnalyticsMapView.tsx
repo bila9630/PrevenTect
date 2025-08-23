@@ -330,6 +330,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 map.current.flyTo({
                     center: coordinates,
                     zoom: zoom,
+                    pitch: 60,
+                    bearing: Math.random() * 60 - 30, // Random rotation between -30 and 30 degrees
                     duration: 2000
                 });
             }
