@@ -42,26 +42,14 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
         // Add new markers
         const newMarkers = coordinates.map(coord => {
-            // Create custom marker element using SVG pin with bottom anchor
+            // Create simple marker element - no complex nested structure
             const el = document.createElement('div');
             el.className = 'building-marker';
             el.style.cursor = 'pointer';
-            el.style.display = 'block';
-            el.style.position = 'relative';
             el.style.width = '20px';
             el.style.height = '24px';
-            el.style.transition = 'z-index 0.1s linear';
             el.setAttribute('data-id', coord.address);
-
-            // Inner wrapper that we scale (so Mapbox's anchor transform on the root is preserved)
-            const inner = document.createElement('div');
-            inner.className = 'marker-inner';
-            inner.style.width = '100%';
-            inner.style.height = '100%';
-            inner.style.transition = 'transform 0.2s ease';
-            inner.style.transformOrigin = '50% 100%';
-            inner.style.willChange = 'transform';
-
+            
             const updateMarkerSize = (isSelected: boolean) => {
                 // No scaling to avoid position shifts; only adjust stacking and state
                 el.style.zIndex = isSelected ? '1000' : '1';
@@ -88,13 +76,12 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             fillColor = `hsl(${hue}, 80%, 50%)`;
             shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
             
-            // SVG pin (small, crisp) - tip at bottom center
-            inner.innerHTML = `
+            // SVG pin directly in element - no wrapper
+            el.innerHTML = `
               <svg width="100%" height="100%" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
                 <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="${fillColor}" stroke="white" stroke-width="1.5" />
               </svg>
             `;
-            el.appendChild(inner);
 
             // Initial size
             updateMarkerSize(false);
