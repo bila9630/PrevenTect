@@ -77,7 +77,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
 
   const handleSendMessage = async (e: React.FormEvent | null, messageText?: string) => {
     if (e) e.preventDefault();
-    
+
     const actualMessageText = messageText || inputMessage.trim();
     if (!actualMessageText || isLoading) return;
 
@@ -265,12 +265,12 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
               </div>
               {/* Quick options after first bot message */}
               {!message.isUser && message.id === '1' && showQuickOptions && (
-                <div className="mt-3 ml-8 flex flex-col gap-2 max-w-[80%]">
+                <div className="mt-3 ml-8 flex flex-col gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleQuickOption('Schaden melden')}
-                    className="text-left justify-start text-sm"
+                    className="text-left justify-start text-sm w-fit"
                   >
                     Schaden melden
                   </Button>
@@ -278,7 +278,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                     variant="outline"
                     size="sm"
                     onClick={() => handleQuickOption('Schadensimulation')}
-                    className="text-left justify-start text-sm"
+                    className="text-left justify-start text-sm w-fit"
                   >
                     Schadensimulation
                   </Button>
