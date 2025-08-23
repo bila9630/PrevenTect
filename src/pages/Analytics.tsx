@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import MapView from '@/components/MapView';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,27 @@ const Analytics = () => {
   const [locationResults, setLocationResults] = useState<LocationResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<LocationResult | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced search function
+  const debouncedSearch = (searchText: string) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      searchLocations(searchText);
+    }, 300);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const searchLocations = async (searchText: string) => {
     if (!searchText.trim()) {
@@ -142,8 +163,8 @@ const Analytics = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchValue(value);
-    // Search for locations as user types
-    searchLocations(value);
+    // Use debounced search to avoid interfering with typing
+    debouncedSearch(value);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -182,7 +203,7 @@ const Analytics = () => {
         
         {/* Location Results Dropdown */}
         {showResults && locationResults.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-background/95 backdrop-blur-sm border border-border rounded-md shadow-lg max-h-60 overflow-y-auto z-20">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-hidden z-20 scrollbar-hide">
             {locationResults.map((location) => (
               <Button
                 key={location.id}
