@@ -439,12 +439,23 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                 <div>
                                     <h4 className="font-medium text-foreground mb-1">Water Damage Risk</h4>
                                     <div className="flex items-center space-x-2">
-                                        <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                                            {selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER ?? 'N/A'}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE}
-                                        </span>
+                                        {(() => {
+                                            const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
+                                            const text = selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE;
+                                            let colorClass = "text-muted-foreground";
+                                            
+                                            if (value >= 200) {
+                                                colorClass = "text-red-500";
+                                            } else if (value >= 100) {
+                                                colorClass = "text-yellow-500";
+                                            }
+                                            
+                                            return (
+                                                <span className={`text-sm ${colorClass}`}>
+                                                    {text || 'N/A'}
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </>
