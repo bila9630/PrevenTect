@@ -47,19 +47,21 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             el.className = 'building-marker';
             el.style.cursor = 'pointer';
             el.style.display = 'block';
-            el.style.transition = 'all 0.2s ease';
+            el.style.transition = 'transform 0.2s ease, z-index 0.1s linear';
+            el.style.width = '20px';
+            el.style.height = '24px';
+            el.style.transformOrigin = '50% 100%';
+            el.setAttribute('data-id', coord.address);
             
             const updateMarkerSize = (isSelected: boolean) => {
                 if (isSelected) {
-                    el.style.width = '28px';
-                    el.style.height = '32px';
                     el.style.transform = 'scale(1.4)';
                     el.style.zIndex = '1000';
+                    el.setAttribute('data-selected', 'true');
                 } else {
-                    el.style.width = '20px';
-                    el.style.height = '24px';
                     el.style.transform = 'scale(1)';
                     el.style.zIndex = '1';
+                    el.setAttribute('data-selected', 'false');
                 }
             };
             
@@ -95,22 +97,28 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             // Add click handler to marker
             el.addEventListener('click', () => {
-                // Reset all markers to normal size
-                markers.forEach(marker => {
-                    const markerEl = marker.getElement();
-                    markerEl.style.width = '20px';
-                    markerEl.style.height = '24px';
-                    markerEl.style.transform = 'scale(1)';
-                    markerEl.style.zIndex = '1';
-                });
-                
-                // Make this marker bigger
+                const container = mapContainer.current;
+                const wasSelected = el.getAttribute('data-selected') === 'true';
+                if (container) {
+                    container.querySelectorAll('.building-marker').forEach((node) => {
+                        const n = node as HTMLDivElement;
+                        n.style.transform = 'scale(1)';
+                        n.style.zIndex = '1';
+                        n.setAttribute('data-selected', 'false');
+                    });
+                }
+
+                if (wasSelected) {
+                    updateMarkerSize(false);
+                    setSelectedBuilding(null);
+                    return;
+                }
+
                 updateMarkerSize(true);
-                
                 setSelectedBuilding({
                     address: coord.address,
                     riskData: coord.riskData,
-                    markerId: coord.address // use address as unique identifier
+                    markerId: coord.address
                 });
             });
 
@@ -150,6 +158,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
     // Effect to update markers when risk mode changes
     useEffect(() => {
+        // clear selection to avoid mismatched scaling
+        setSelectedBuilding(null);
         if (markersData.length > 0) {
             // Clear existing markers
             markers.forEach(marker => marker.remove());
@@ -157,6 +167,18 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             createMarkers(markersData);
         }
     }, [riskMode]);
+
+    // Shrink all markers when selection is cleared
+    useEffect(() => {
+        if (!selectedBuilding && mapContainer.current) {
+            mapContainer.current.querySelectorAll('.building-marker').forEach((node) => {
+                const n = node as HTMLDivElement;
+                n.style.transform = 'scale(1)';
+                n.style.zIndex = '1';
+                n.setAttribute('data-selected', 'false');
+            });
+        }
+    }, [selectedBuilding]);
 
     // Expose map controls to parent component
     useImperativeHandle(ref, () => ({
