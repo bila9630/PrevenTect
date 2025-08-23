@@ -48,12 +48,20 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             el.style.cursor = 'pointer';
             el.style.width = '20px';
             el.style.height = '24px';
+            el.style.transition = 'transform 0.2s ease, z-index 0.1s linear';
             el.setAttribute('data-id', coord.address);
             
             const updateMarkerSize = (isSelected: boolean) => {
-                // No scaling to avoid position shifts; only adjust stacking and state
-                el.style.zIndex = isSelected ? '1000' : '1';
-                el.setAttribute('data-selected', isSelected ? 'true' : 'false');
+                if (isSelected) {
+                    el.style.transform = 'scale(1.2)';
+                    el.style.transformOrigin = '50% 100%'; // Scale from bottom point
+                    el.style.zIndex = '1000';
+                    el.setAttribute('data-selected', 'true');
+                } else {
+                    el.style.transform = 'scale(1)';
+                    el.style.zIndex = '1';
+                    el.setAttribute('data-selected', 'false');
+                }
             };
             
             let riskValue, minVal, maxVal, fillColor, shadowColor;
@@ -93,6 +101,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 if (container) {
                     container.querySelectorAll('.building-marker').forEach((node) => {
                         const n = node as HTMLDivElement;
+                        n.style.transform = 'scale(1)';
                         n.style.zIndex = '1';
                         n.setAttribute('data-selected', 'false');
                     });
@@ -163,6 +172,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         if (!selectedBuilding && mapContainer.current) {
             mapContainer.current.querySelectorAll('.building-marker').forEach((node) => {
                 const n = node as HTMLDivElement;
+                n.style.transform = 'scale(1)';
                 n.style.zIndex = '1';
                 n.setAttribute('data-selected', 'false');
             });
