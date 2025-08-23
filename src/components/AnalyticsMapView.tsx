@@ -72,57 +72,24 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             // Add new markers for dangerous buildings
             const newMarkers = coordinates.map(coord => {
-                // Create custom marker element shaped like a geo pin
+                // Create custom marker element using SVG pin with bottom anchor
                 const el = document.createElement('div');
                 el.className = 'dangerous-building-marker';
                 el.style.width = '20px';
-                el.style.height = '20px';
+                el.style.height = '24px';
                 el.style.cursor = 'pointer';
-                el.style.position = 'relative';
+                el.style.display = 'block';
                 
-                // Create the pin shape using CSS
+                // SVG pin (small, crisp) - tip at bottom center
                 el.innerHTML = `
-                    <div style="
-                        width: 16px;
-                        height: 16px;
-                        background: #dc2626;
-                        border-radius: 50% 50% 50% 0;
-                        transform: rotate(-45deg);
-                        border: 2px solid white;
-                        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.6);
-                        position: absolute;
-                        top: 0;
-                        left: 2px;
-                        animation: bounce 2s infinite;
-                    "></div>
-                    <div style="
-                        width: 6px;
-                        height: 6px;
-                        background: white;
-                        border-radius: 50%;
-                        position: absolute;
-                        top: 3px;
-                        left: 7px;
-                        transform: rotate(45deg);
-                        z-index: 1;
-                    "></div>
+                  <svg width="20" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px rgba(220,38,38,0.6));">
+                    <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="#dc2626" stroke="white" stroke-width="1.5" />
+                  </svg>
                 `;
 
-                // Add bouncing animation for geo pin markers
-                if (!document.getElementById('danger-marker-styles')) {
-                    const style = document.createElement('style');
-                    style.id = 'danger-marker-styles';
-                    style.textContent = `
-            @keyframes bounce {
-              0%, 20%, 50%, 80%, 100% { transform: rotate(-45deg) translateY(0); }
-              40% { transform: rotate(-45deg) translateY(-3px); }
-              60% { transform: rotate(-45deg) translateY(-2px); }
-            }
-          `;
-                    document.head.appendChild(style);
-                }
+                // No extra styles needed for SVG marker
 
-                const marker = new mapboxgl.Marker(el)
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
                     .setLngLat([coord.lng, coord.lat])
                     .setPopup(
                         new mapboxgl.Popup({ offset: 25 }).setHTML(
