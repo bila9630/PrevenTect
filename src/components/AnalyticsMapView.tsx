@@ -712,17 +712,17 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             {/* Combined Risk Filter Controls */}
             <div className="absolute bottom-4 right-4 z-10">
                 <Card className="bg-background/90 backdrop-blur-sm border-border shadow-lg">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm">
+                    <CardHeader className="pb-2 pt-3">
+                        <CardTitle className="text-base font-semibold text-gray-600">
                             Risiko Filter
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 pt-2">
                         {/* Risk Mode Toggle */}
-                        <div className="flex items-center space-x-3 mb-6">
+                        <div className="grid grid-cols-2 gap-2 mb-10">
                             <button
                                 onClick={() => setRiskMode('water')}
-                                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                                className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${
                                     riskMode === 'water' 
                                         ? 'bg-primary text-primary-foreground' 
                                         : 'text-muted-foreground hover:text-foreground'
@@ -733,7 +733,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             
                             <button
                                 onClick={() => setRiskMode('wind')}
-                                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                                className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${
                                     riskMode === 'wind' 
                                         ? 'bg-primary text-primary-foreground' 
                                         : 'text-muted-foreground hover:text-foreground'
@@ -789,6 +789,43 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                 </div>
                             </div>
                         )}
+                        
+                        {/* Send Info Button */}
+                        <div className="mt-8 pt-6">
+                            {(() => {
+                                const visibleMarkersCount = markersData.filter(coord => {
+                                    let riskValue;
+                                    if (riskMode === 'water') {
+                                        riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
+                                        return Number(riskValue) >= waterThreshold[0];
+                                    } else {
+                                        riskValue = coord.riskData?.STURM;
+                                        return Number(riskValue) >= windThreshold[0];
+                                    }
+                                }).length;
+                                
+                                const hasEnoughMarkers = visibleMarkersCount > 0;
+                                
+                                return (
+                                    <Button
+                                        className={`w-full py-3 px-4 font-medium ${
+                                            hasEnoughMarkers 
+                                                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                        }`}
+                                        disabled={!hasEnoughMarkers}
+                                        onClick={() => {
+                                            if (hasEnoughMarkers) {
+                                                // Handle send info action
+                                                console.log(`Sending info to ${visibleMarkersCount} properties`);
+                                            }
+                                        }}
+                                    >
+                                        Info an {visibleMarkersCount} Liegenschaften senden!
+                                    </Button>
+                                );
+                            })()}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
