@@ -33,6 +33,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showQuickOptions, setShowQuickOptions] = useState<boolean>(true);
+  const [showDamageOptions, setShowDamageOptions] = useState<boolean>(false);
+  const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
   const { toast } = useToast();
   const { sendWithFunctions } = useOpenAI(apiKey);
 
@@ -98,6 +100,31 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     };
 
     setMessages(prev => [...prev, botMessage]);
+    setLastBotMessageId(botMessage.id);
+  };
+
+  const handleDamageOption = (damageType: string) => {
+    setShowDamageOptions(false);
+    
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: damageType,
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    // Add bot response
+    const botMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      text: `Vielen Dank! Ich habe "${damageType}" als Schadensursache notiert. Können Sie den Schaden genauer beschreiben?`,
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, botMessage]);
   };
 
   const handleSendMessage = async (e: React.FormEvent | null, messageText?: string) => {
@@ -142,12 +169,16 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
             const locationMessage: Message = {
               id: (Date.now() + 1).toString(),
               text: loc.success
-                ? `📍 "${loc.location}" gefunden und zur Position auf der Karte gezoomt!`
+                ? `📍 "${loc.location}" gefunden und zur Position auf der Karte gezoomt! Was hat den Schaden verursacht?`
                 : `❌ ${loc.error || 'Konnte diesen Ort nicht finden. Bitte versuche eine spezifischere Adresse.'}`,
               timestamp: new Date(),
               isUser: false,
             };
             setMessages(prev => [...prev, locationMessage]);
+            if (loc.success) {
+              setShowDamageOptions(true);
+              setLastBotMessageId(locationMessage.id);
+            }
           } catch (error) {
             const errorMessage: Message = {
               id: (Date.now() + 2).toString(),
@@ -307,6 +338,47 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                   >
                     Schadensimulation
                   </Button>
+                </div>
+              )}
+              
+              {/* Damage cause options */}
+              {!message.isUser && message.id === lastBotMessageId && showDamageOptions && (
+                <div className="mt-3 ml-8 grid grid-cols-3 gap-3 max-w-md">
+                  <button
+                    onClick={() => handleDamageOption('Hagel')}
+                    className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <div className="text-primary text-xl">🌨️</div>
+                      </div>
+                      <span className="text-sm font-medium text-foreground">Hagel</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDamageOption('Sturmwind')}
+                    className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <div className="text-primary text-xl">💨</div>
+                      </div>
+                      <span className="text-sm font-medium text-foreground">Sturmwind</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDamageOption('Andere')}
+                    className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <div className="text-primary text-xl">⚡</div>
+                      </div>
+                      <span className="text-sm font-medium text-foreground">Andere</span>
+                    </div>
+                  </button>
                 </div>
               )}
             </div>
