@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Droplets, Wind } from 'lucide-react';
 
 interface AnalyticsMapViewProps {
     onTokenSet?: (token: string) => void;
@@ -59,7 +58,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             inner.style.height = '100%';
             inner.style.transition = 'transform 0.2s ease';
             inner.style.transformOrigin = '50% 100%';
-            
+
             const updateMarkerSize = (isSelected: boolean) => {
                 if (isSelected) {
                     inner.style.transform = 'scale(1.5)';
@@ -71,9 +70,9 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     el.setAttribute('data-selected', 'false');
                 }
             };
-            
+
             let riskValue, minVal, maxVal, fillColor, shadowColor;
-            
+
             if (riskMode === 'water') {
                 // Water damage risk (1-6 => green->red)
                 riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
@@ -85,13 +84,13 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 minVal = 25;
                 maxVal = 38;
             }
-            
+
             const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
             const t = Number.isNaN(normalizedRisk) ? 0 : (normalizedRisk - minVal) / (maxVal - minVal);
             const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
             fillColor = `hsl(${hue}, 80%, 50%)`;
             shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
-            
+
             // SVG pin in inner wrapper - not root element
             inner.innerHTML = `
               <svg width="100%" height="100%" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
@@ -176,10 +175,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             const currentZoom = map.current?.getZoom();
             const currentPitch = map.current?.getPitch();
             const currentBearing = map.current?.getBearing();
-            
+
             // Clear existing markers but preserve state
             markers.forEach(marker => marker.remove());
-            
+
             // Recreate markers without automatic flying
             const newMarkers = markersData.map(coord => {
                 // Create simple marker element - root stays untouched for Mapbox positioning
@@ -196,7 +195,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 inner.style.height = '100%';
                 inner.style.transition = 'transform 0.2s ease';
                 inner.style.transformOrigin = '50% 100%';
-                
+
                 const updateMarkerSize = (isSelected: boolean) => {
                     if (isSelected) {
                         inner.style.transform = 'scale(1.5)';
@@ -208,10 +207,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         el.setAttribute('data-selected', 'false');
                     }
                 };
-                
+
                 let riskValue, minVal, maxVal, fillColor, shadowColor;
                 let isFiltered = false;
-                
+
                 if (riskMode === 'water') {
                     // Water damage risk (1-6 => green->red)
                     riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
@@ -225,7 +224,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     maxVal = 38;
                     isFiltered = Number(riskValue) < windThreshold[0];
                 }
-                
+
                 if (isFiltered) {
                     // Gray out filtered markers
                     fillColor = `hsl(0, 0%, 60%)`;
@@ -237,7 +236,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     fillColor = `hsl(${hue}, 80%, 50%)`;
                     shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
                 }
-                
+
                 // SVG pin in inner wrapper - not root element
                 inner.innerHTML = `
                   <svg width="100%" height="100%" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
@@ -285,7 +284,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             });
 
             setMarkers(newMarkers);
-            
+
             // Restore map state after markers are recreated
             if (currentCenter && currentZoom !== undefined && currentPitch !== undefined && currentBearing !== undefined) {
                 map.current?.jumpTo({
@@ -295,7 +294,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     bearing: currentBearing
                 });
             }
-            
+
             // Restore selection after markers are recreated
             if (currentSelection) {
                 // Small delay to ensure markers are created
@@ -412,33 +411,12 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             console.log('Analytics map instance created successfully');
 
-            // Add navigation controls
-            map.current.addControl(
-                new mapboxgl.NavigationControl({
-                    visualizePitch: true,
-                }),
-                'top-right'
-            );
-
-            // Add scale control for analytics
+            // Add scale control for analytics (keep minimal UI)
             map.current.addControl(new mapboxgl.ScaleControl({
                 maxWidth: 100,
                 unit: 'metric'
             }));
 
-            // Add fullscreen control
-            map.current.addControl(new mapboxgl.FullscreenControl());
-
-            // Add geolocate control
-            map.current.addControl(
-                new mapboxgl.GeolocateControl({
-                    positionOptions: {
-                        enableHighAccuracy: true
-                    },
-                    trackUserLocation: true,
-                    showUserHeading: true
-                })
-            );
 
             // Add atmosphere, fog effects, and 3D buildings
             map.current.on('style.load', () => {
@@ -571,7 +549,6 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             try {
                 map.current?.remove();
                 // ensure reference is cleared to avoid double-destroy
-                // @ts-ignore
                 map.current = null;
             } catch (e) {
                 console.error('Error removing map on unmount:', e);
@@ -647,23 +624,23 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             {/* Risk Information Panel */}
             {selectedBuilding && (
-                <div className="absolute top-4 right-16 w-80 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
+                <div className="absolute top-4 right-4 w-80 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-semibold text-foreground">Risks</h3>
-                        <button 
+                        <button
                             onClick={() => setSelectedBuilding(null)}
                             className="text-muted-foreground hover:text-foreground text-sm p-1"
                         >
                             ✕
                         </button>
                     </div>
-                    
+
                     <div className="space-y-3">
                         <div>
                             <h4 className="font-medium text-foreground mb-1">Address</h4>
                             <p className="text-sm text-muted-foreground">{selectedBuilding.address}</p>
                         </div>
-                        
+
                         {selectedBuilding.riskData && (
                             <div className="space-y-3">
                                 {/* Water Risk */}
@@ -676,13 +653,13 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                             const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
                                             const text = selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE;
                                             let colorClass = "text-muted-foreground";
-                                            
+
                                             if (value >= 200) {
                                                 colorClass = "text-red-500";
                                             } else if (value >= 100) {
                                                 colorClass = "text-yellow-500";
                                             }
-                                            
+
                                             return (
                                                 <span className={`text-sm ${colorClass}`}>
                                                     {text || 'N/A'}
@@ -722,22 +699,20 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         <div className="grid grid-cols-2 gap-2 mb-10">
                             <button
                                 onClick={() => setRiskMode('water')}
-                                className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${
-                                    riskMode === 'water' 
-                                        ? 'bg-primary text-primary-foreground' 
+                                className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${riskMode === 'water'
+                                        ? 'bg-primary text-primary-foreground'
                                         : 'text-muted-foreground hover:text-foreground'
-                                }`}
+                                    }`}
                             >
                                 <span className="text-xs font-medium">Wasser</span>
                             </button>
-                            
+
                             <button
                                 onClick={() => setRiskMode('wind')}
-                                className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${
-                                    riskMode === 'wind' 
-                                        ? 'bg-primary text-primary-foreground' 
+                                className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${riskMode === 'wind'
+                                        ? 'bg-primary text-primary-foreground'
                                         : 'text-muted-foreground hover:text-foreground'
-                                }`}
+                                    }`}
                             >
                                 <span className="text-xs font-medium">Wind</span>
                             </button>
@@ -777,19 +752,19 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                         step={1}
                                         className="w-48"
                                     />
-                                     <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 pointer-events-none">
-                                         <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
-                                             {windThreshold[0] * 4} km/h
-                                         </span>
-                                     </div>
-                                 </div>
-                                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                     <span>100 km/h</span>
-                                     <span>152+ km/h</span>
+                                    <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 pointer-events-none">
+                                        <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
+                                            {windThreshold[0] * 4} km/h
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                    <span>100 km/h</span>
+                                    <span>152+ km/h</span>
                                 </div>
                             </div>
                         )}
-                        
+
                         {/* Send Info Button */}
                         <div className="mt-8 pt-6">
                             {(() => {
@@ -817,16 +792,15 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                             return Number(riskValue) >= windThreshold[0];
                                         }
                                     }).length;
-                                    
+
                                     const hasEnoughMarkers = visibleMarkersCount > 0;
-                                    
+
                                     return (
                                         <Button
-                                            className={`w-full py-3 px-4 font-medium ${
-                                                hasEnoughMarkers 
-                                                    ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                            className={`w-full py-3 px-4 font-medium ${hasEnoughMarkers
+                                                    ? 'bg-red-600 hover:bg-red-700 text-white'
                                                     : 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                                            }`}
+                                                }`}
                                             disabled={!hasEnoughMarkers}
                                             onClick={() => {
                                                 if (hasEnoughMarkers) {
@@ -834,7 +808,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                                 }
                                             }}
                                         >
-                                            {hasEnoughMarkers 
+                                            {hasEnoughMarkers
                                                 ? `Info an ${visibleMarkersCount} Liegenschaften senden!`
                                                 : 'Info an Liegenschaften senden'
                                             }
