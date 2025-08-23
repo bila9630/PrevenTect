@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card } from '@/components/ui/card';
@@ -12,11 +12,13 @@ interface MapViewProps {
 interface MapViewRef {
   flyTo: (coordinates: [number, number], zoom?: number) => void;
   toggleRain: (enabled: boolean) => void;
+  stopRotation: () => void;
 }
 
 const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const rafId = useRef<number | null>(null);
   const [mapboxToken, setMapboxToken] = useState('');
   const [isTokenSet, setIsTokenSet] = useState(false);
 
@@ -31,6 +33,14 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
   const [isRainEnabled, setIsRainEnabled] = useState(false);
+
+  // Camera rotation function
+  const rotateCamera = useCallback((timestamp: number) => {
+    const m = map.current;
+    if (!m) return;
+    m.rotateTo((timestamp / 100) % 360, { duration: 0 });
+    rafId.current = requestAnimationFrame(rotateCamera);
+  }, []);
 
   // Rain effect helper function
   const toggleRainEffect = (enabled: boolean) => {
@@ -70,18 +80,36 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   useImperativeHandle(ref, () => ({
     flyTo: (coordinates: [number, number], zoom = 12) => {
       if (map.current) {
-        map.current.flyTo({
+        // Cancel any existing rotation animation
+        if (rafId.current) {
+          cancelAnimationFrame(rafId.current);
+          rafId.current = null;
+        }
+
+        map.current.easeTo({
           center: coordinates,
           zoom: zoom,
+          pitch: 45,
           duration: 2000
+        });
+
+        // Start rotation when the ease animation finishes
+        map.current.once('moveend', () => {
+          rafId.current = requestAnimationFrame(rotateCamera);
         });
       }
     },
     toggleRain: (enabled: boolean) => {
       setIsRainEnabled(enabled);
       toggleRainEffect(enabled);
+    },
+    stopRotation: () => {
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
     }
-  }), []);
+  }), [rotateCamera]);
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {
@@ -234,6 +262,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   useEffect(() => {
     return () => {
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+      }
       if (currentMarker) {
         currentMarker.remove();
       }
