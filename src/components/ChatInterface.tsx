@@ -54,6 +54,9 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
   const [conversationState, setConversationState] = useState<'initial' | 'damage_selected' | 'description_given' | 'date_needed' | 'date_selected'>('initial');
   const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
   const [showRepairOptions, setShowRepairOptions] = useState<boolean>(false);
+  // Show a contextual "Danke" button after partner route is displayed
+  const [showThanksOption, setShowThanksOption] = useState<boolean>(false);
+  const [thanksMessageId, setThanksMessageId] = useState<string>('');
   const { toast } = useToast();
   const { sendWithFunctions, estimateCoverage, generateRecommendations } = useOpenAI(apiKey);
 
@@ -125,11 +128,14 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
       await onRequestPartners();
       const doneMessage: Message = {
         id: (Date.now() + 102).toString(),
-        text: '🧭 Ich habe eine Route zu einem Partnerbetrieb auf der Karte angezeigt.',
+        text: 'Ich habe eine Route zu einem Partnerbetrieb auf der Karte angezeigt.',
         timestamp: new Date(),
         isUser: false,
       };
       setMessages(prev => [...prev, doneMessage]);
+      // Enable contextual Danke button under this message
+      setThanksMessageId(doneMessage.id);
+      setShowThanksOption(true);
     } catch {
       const errorMessage: Message = {
         id: (Date.now() + 101).toString(),
@@ -139,6 +145,28 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
       };
       setMessages(prev => [...prev, errorMessage]);
     }
+  };
+
+  // Handle click on the contextual "Danke" button shown after partner route is displayed
+  const handleThanksClick = () => {
+    setShowThanksOption(false);
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: 'Danke',
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    const botFollowUp: Message = {
+      id: (Date.now() + 1).toString(),
+      text: 'Gern geschehen! Möchten Sie eine kurze Simulation spielen, um Maßnahmen gegen zukünftige Schäden kennenzulernen?',
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, userMessage, botFollowUp]);
+    setLastBotMessageId(botFollowUp.id);
   };
 
   // Produce a preliminary insurance estimate and finalize the flow
@@ -655,6 +683,20 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                     className="text-left justify-start text-sm w-fit"
                   >
                     Schadensimulation
+                  </Button>
+                </div>
+              )}
+
+              {/* Danke button after partner route confirmation */}
+              {!message.isUser && message.id === thanksMessageId && showThanksOption && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleThanksClick}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Danke
                   </Button>
                 </div>
               )}
