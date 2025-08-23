@@ -172,8 +172,6 @@ const Analytics = () => {
 
           if (validCoordinates.length > 0) {
             mapRef.current?.addMarkers(validCoordinates);
-            // After markers adjust the view, re-focus tightly on the area of interest
-            mapRef.current?.flyTo([7.4333, 46.9548], 18);
             toast.success(`Found ${dangerousBuildings.length} dangerous building(s) near ${targetAddress}, ${validCoordinates.length} mapped`);
           } else {
             toast.error('Could not geocode dangerous addresses');
@@ -201,8 +199,8 @@ const Analytics = () => {
     console.log("Selected location:", location);
     console.log("Selected location:", location.attrs.detail);
 
-    // Center map on Brückenstrasse 73, 3005 Bern (coordinates: 7.4333, 46.9548)
-    mapRef.current?.flyTo([7.4333, 46.9548], 18);
+    // Center map on selected location
+    mapRef.current?.flyTo([location.attrs.lon, location.attrs.lat], 18);
     
     // Always use the hardcoded address for building search
     searchBuildings(formatAddress(location.attrs.detail));
