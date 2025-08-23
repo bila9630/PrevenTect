@@ -190,7 +190,12 @@ export default function RepairRecommendations({ damageType, description, locatio
                     <Button size="sm" variant="default" className="gap-2">
                         <Hammer className="h-4 w-4" /> Partnerbetriebe anfragen
                     </Button>
-                    <Button size="sm" variant="ghost" className="gap-2">
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-2"
+                        onClick={() => window.open('https://www.hagelregister.ch/', '_blank', 'noopener,noreferrer')}
+                    >
                         <ExternalLink className="h-4 w-4" /> Mehr zu Hagel- und Sturmklassen
                     </Button>
                 </div>
