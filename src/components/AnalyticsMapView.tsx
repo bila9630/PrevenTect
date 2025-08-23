@@ -719,7 +719,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {/* Risk Mode Toggle */}
-                        <div className="flex items-center space-x-3 mb-6">
+                        <div className="flex items-center space-x-3 mb-12">
                             <button
                                 onClick={() => setRiskMode('water')}
                                 className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
@@ -789,6 +789,43 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                 </div>
                             </div>
                         )}
+                        
+                        {/* Send Info Button */}
+                        <div className="mt-8 pt-6">
+                            {(() => {
+                                const visibleMarkersCount = markersData.filter(coord => {
+                                    let riskValue;
+                                    if (riskMode === 'water') {
+                                        riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
+                                        return Number(riskValue) >= waterThreshold[0];
+                                    } else {
+                                        riskValue = coord.riskData?.STURM;
+                                        return Number(riskValue) >= windThreshold[0];
+                                    }
+                                }).length;
+                                
+                                const hasEnoughMarkers = visibleMarkersCount > 0;
+                                
+                                return (
+                                    <Button
+                                        className={`w-full py-3 px-4 font-medium ${
+                                            hasEnoughMarkers 
+                                                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                        }`}
+                                        disabled={!hasEnoughMarkers}
+                                        onClick={() => {
+                                            if (hasEnoughMarkers) {
+                                                // Handle send info action
+                                                console.log(`Sending info to ${visibleMarkersCount} properties`);
+                                            }
+                                        }}
+                                    >
+                                        Info an {visibleMarkersCount} Liegenschaften senden!
+                                    </Button>
+                                );
+                            })()}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
