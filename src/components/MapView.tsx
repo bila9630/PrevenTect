@@ -11,6 +11,8 @@ interface MapViewProps {
 
 interface MapViewRef {
   flyTo: (coordinates: [number, number], zoom?: number) => void;
+  rotateAroundLocation: (coordinates: [number, number]) => void;
+  stopRotation: () => void;
   toggleRain: (enabled: boolean) => void;
   addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => void;
   clearMarkers: () => void;
@@ -34,6 +36,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
   const [isRainEnabled, setIsRainEnabled] = useState(false);
   const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
+  const [isRotating, setIsRotating] = useState(false);
+  const rotationRef = useRef<number | null>(null);
+  const rotationStartTime = useRef<number>(0);
 
   // Rain effect helper function
   const toggleRainEffect = (enabled: boolean) => {
@@ -69,16 +74,63 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
     }
   };
 
+  // Camera rotation function
+  const rotateCamera = (timestamp: number) => {
+    if (!map.current || !isRotating) return;
+
+    if (rotationStartTime.current === 0) {
+      rotationStartTime.current = timestamp;
+    }
+
+    // Calculate rotation angle (about 10 degrees per second)
+    const elapsed = timestamp - rotationStartTime.current;
+    const rotation = (elapsed / 100) % 360;
+    
+    map.current.rotateTo(rotation, { duration: 0 });
+    
+    if (isRotating) {
+      rotationRef.current = requestAnimationFrame(rotateCamera);
+    }
+  };
+
+  // Stop rotation function
+  const stopCameraRotation = () => {
+    setIsRotating(false);
+    rotationStartTime.current = 0;
+    if (rotationRef.current) {
+      cancelAnimationFrame(rotationRef.current);
+      rotationRef.current = null;
+    }
+  };
+
   // Expose map controls to parent component
   useImperativeHandle(ref, () => ({
     flyTo: (coordinates: [number, number], zoom = 12) => {
       if (map.current) {
+        // Stop any ongoing rotation
+        stopCameraRotation();
+        
         map.current.flyTo({
           center: coordinates,
           zoom: zoom,
           duration: 2000
         });
       }
+    },
+    rotateAroundLocation: (coordinates: [number, number]) => {
+      if (!map.current) return;
+      
+      // Stop any existing rotation
+      stopCameraRotation();
+      
+      // Set the center and start rotation
+      map.current.setCenter(coordinates);
+      setIsRotating(true);
+      rotationStartTime.current = 0;
+      rotationRef.current = requestAnimationFrame(rotateCamera);
+    },
+    stopRotation: () => {
+      stopCameraRotation();
     },
     toggleRain: (enabled: boolean) => {
       setIsRainEnabled(enabled);
@@ -295,6 +347,8 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       // Interaction event listeners
       const onInteractionStart = () => {
         userInteracting = true;
+        // Stop rotation when user interacts
+        stopCameraRotation();
       };
 
       const onInteractionEnd = () => {
@@ -337,6 +391,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   useEffect(() => {
     return () => {
+      stopCameraRotation();
       if (currentMarker) {
         currentMarker.remove();
       }

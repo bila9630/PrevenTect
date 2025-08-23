@@ -20,8 +20,13 @@ const Index = () => {
         const [lng, lat] = data.features[0].center;
         const placeName = data.features[0].place_name;
 
-        // Zoom to the location
+        // Zoom to the location and start rotation after a delay
         mapRef.current.flyTo([lng, lat], 18);
+        
+        // Start rotation around the building after the flyTo animation completes
+        setTimeout(() => {
+          mapRef.current.rotateAroundLocation([lng, lat]);
+        }, 2500);
 
         return { success: true, location: placeName, coordinates: [lng, lat] };
       } else {
