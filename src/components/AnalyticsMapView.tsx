@@ -81,10 +81,21 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 el.style.cursor = 'pointer';
                 el.style.display = 'block';
                 
+                // Determine marker color by water damage risk
+                const water = Number(coord.riskData?.HOCHWASSER_FLIESSGEWAESSER);
+                let fillColor = '#dc2626'; // red for 200cm+
+                if (!Number.isNaN(water)) {
+                    if (water >= 200) {
+                        fillColor = '#dc2626';
+                    } else if (water >= 100) {
+                        fillColor = '#eab308'; // yellow for 100-199cm
+                    }
+                }
+                
                 // SVG pin (small, crisp) - tip at bottom center
                 el.innerHTML = `
                   <svg width="20" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px rgba(220,38,38,0.6));">
-                    <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="#dc2626" stroke="white" stroke-width="1.5" />
+                    <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="${fillColor}" stroke="white" stroke-width="1.5" />
                   </svg>
                 `;
 
