@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Send, MapPin, KeyRound, CalendarIcon, Upload, X } from 'lucide-react';
+import { Send, MapPin, KeyRound, CalendarIcon, Upload, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
 import { format } from 'date-fns';
@@ -15,6 +15,9 @@ interface Message {
   text: string;
   timestamp: Date;
   isUser: boolean;
+  isLoadingMessage?: boolean;
+  loadingSteps?: string[];
+  currentStep?: number;
 }
 
 interface ChatInterfaceProps {
@@ -45,7 +48,12 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [conversationState, setConversationState] = useState<'initial' | 'damage_selected' | 'description_given' | 'date_needed' | 'date_selected'>('initial');
   const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
   const { toast } = useToast();
-  const { sendWithFunctions } = useOpenAI(apiKey);
+  const { sendWithFunctions, estimateCoverage } = useOpenAI(apiKey);
+
+  // Claim context we gather across the flow
+  const [selectedDamageType, setSelectedDamageType] = useState<string | null>(null);
+  const [damageDescription, setDamageDescription] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,10 +86,129 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     toast({ description: 'OpenAI API-Schlüssel gelöscht.' });
   };
 
+  // Produce a preliminary insurance estimate and finalize the flow
+  const produceEstimateAndFinalize = async () => {
+    // Show loader with 3 steps (1.5s each)
+    const loaderId = (Date.now() + 1).toString();
+    const loadingMsg: Message = {
+      id: loaderId,
+      text: '',
+      timestamp: new Date(),
+      isUser: false,
+      isLoadingMessage: true,
+      loadingSteps: ['Daten analysieren', 'Angaben prüfen', 'Schätzung berechnen'],
+      currentStep: 0,
+    };
+    setMessages(prev => [...prev, loadingMsg]);
+
+    const timers: number[] = [];
+    const advanceStep = (step: number) => {
+      setMessages(prev => prev.map(m => (m.id === loaderId ? { ...m, currentStep: step } : m)));
+    };
+  timers.push(window.setTimeout(() => advanceStep(1), 1500));
+  timers.push(window.setTimeout(() => advanceStep(2), 3000));
+    const start = performance.now();
+
+    // Build context for estimation
+    const ctx: {
+      location?: string;
+      damageType: string;
+      description: string;
+      dateISO?: string;
+      imagesCount?: number;
+    } = {
+      location: selectedLocation || undefined,
+      damageType: selectedDamageType || 'Unbekannt',
+      description: damageDescription || 'Keine Beschreibung',
+      dateISO: selectedDate ? selectedDate.toISOString().split('T')[0] : undefined,
+      imagesCount: uploadedImages.length,
+    };
+
+    // Helper to format CHF amounts
+    const fmtCHF = (n: number) => `CHF ${n.toLocaleString('de-CH')}`;
+
+    // Local heuristic fallback
+    const localHeuristic = () => {
+      let baseMin = 800, baseMax = 5000;
+      const t = (selectedDamageType || '').toLowerCase();
+      if (t.includes('hagel')) { baseMin = 1500; baseMax = 12000; }
+      else if (t.includes('sturm')) { baseMin = 1000; baseMax = 10000; }
+      else { baseMin = 500; baseMax = 6000; }
+
+      const desc = (damageDescription || '').toLowerCase();
+      const boosts: Array<[RegExp, number]> = [
+        [/dach|ziegel|unterdach|trapez/i, 0.4],
+        [/fenster|glas|scheibe/i, 0.3],
+        [/fassade|putz/i, 0.25],
+        [/wasser|nässe|keller|leitung/i, 0.5],
+        [/solaranlage|pv|photovoltaik/i, 0.35],
+      ];
+      let factor = 1;
+      for (const [re, inc] of boosts) {
+        if (re.test(desc)) factor += inc;
+      }
+      if (uploadedImages.length >= 4) factor += 0.2; else if (uploadedImages.length >= 1) factor += 0.1;
+      const min = Math.round(baseMin * factor);
+      const max = Math.round(baseMax * factor);
+      const assumedDeductible = 500;
+      const coveredMin = Math.max(0, min - assumedDeductible);
+      const coveredMax = Math.max(0, max - assumedDeductible);
+      return {
+        min, max, coveredMin, coveredMax, assumedDeductible
+      };
+    };
+
+    let estimateText: string | null = null;
+    try {
+      if (apiKey && estimateCoverage) {
+        estimateText = await estimateCoverage(ctx);
+      }
+    } catch {
+      estimateText = null;
+    }
+
+    if (!estimateText) {
+      const est = localHeuristic();
+      estimateText = [
+        `Vorläufige Schätzung der Reparaturkosten: ${fmtCHF(est.min)} – ${fmtCHF(est.max)}.`,
+        `Voraussichtlich durch die GVB gedeckt (vereinfachte Annahme: Selbstbehalt ${fmtCHF(est.assumedDeductible)}): ${fmtCHF(est.coveredMin)} – ${fmtCHF(est.coveredMax)}.`,
+        `Hinweis: Diese Schätzung ist unverbindlich und vorläufig. Die tatsächliche Leistung hängt von Ihrer Police (Deckung/Selbstbehalt), Zustand der Bauteile und der Schadenprüfung vor Ort ab.`,
+      ].join(' ');
+    }
+
+  // Ensure the loader completes its 3 steps (4.5s total)
+    const elapsed = performance.now() - start;
+  const remaining = Math.max(0, 4500 - Math.round(elapsed));
+    if (remaining > 0) {
+      await new Promise((res) => setTimeout(res, remaining));
+    }
+
+    // Cleanup loader
+    timers.forEach((t) => clearTimeout(t));
+    setMessages(prev => prev.filter(m => m.id !== loaderId));
+
+    const estimateMessage: Message = {
+      id: (Date.now() + 2).toString(),
+      text: estimateText,
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    const finalMessage: Message = {
+      id: (Date.now() + 3).toString(),
+      text: 'Vielen Dank! Ihre Schadensmeldung wurde erfasst. Das System verarbeitet die Angaben, und Sie erhalten weitere Informationen per E-Mail. (Ergebnis ist vorläufig)',
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, estimateMessage, finalMessage]);
+    setConversationState('initial');
+  };
+
 
   const handleQuickOption = (optionText: string) => {
     setShowQuickOptions(false);
-    
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -114,7 +241,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
 
   const handleDamageOption = async (damageType: string) => {
     setShowDamageOptions(false);
-    
+    setSelectedDamageType(damageType);
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -168,6 +296,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
 
     // Check if this is a description response after damage selection
     if (conversationState === 'damage_selected') {
+      // Save user's free-text damage description
+      setDamageDescription(actualMessageText);
       const dateMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: 'Wann ist der Schaden aufgetreten? Bitte wählen Sie das Datum aus:',
@@ -211,6 +341,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
             };
             setMessages(prev => [...prev, locationMessage]);
             if (loc.success) {
+              setSelectedLocation(loc.location || address);
               setShowDamageOptions(true);
               setLastBotMessageId(locationMessage.id);
             }
@@ -274,10 +405,10 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
         setMessages(prev => [...prev, aiResponse]);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
-        text: `❌ OpenAI Fehler: ${err?.message || 'Unbekannter Fehler'}`,
+        text: `❌ OpenAI Fehler: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`,
         timestamp: new Date(),
         isUser: false,
       };
@@ -339,7 +470,27 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                       : 'bg-message-bubble text-message-text'
                       }`}
                   >
-                    <p className="text-sm leading-relaxed">{message.text}</p>
+                    {message.isLoadingMessage ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <p className="text-sm font-medium">Bitte warten …</p>
+                        </div>
+                        <ol className="text-xs space-y-1">
+                          {(message.loadingSteps || []).map((label, idx) => (
+                            <li key={idx} className={`flex items-center gap-2 ${message.currentStep === idx ? 'text-foreground' : 'text-muted-foreground'}`}>
+                              <span className={`inline-flex h-2 w-2 rounded-full ${message.currentStep === idx ? 'bg-primary' : 'bg-muted-foreground/40'}`}></span>
+                              <span>{label}</span>
+                              {message.currentStep === idx && (
+                                <span className="ml-auto text-[10px] uppercase tracking-wide text-primary">läuft</span>
+                              )}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-relaxed">{message.text}</p>
+                    )}
                     <div className="mt-1 flex items-center justify-between">
                       <span className={`text-xs ${message.isUser
                         ? 'text-primary-foreground/70'
@@ -375,7 +526,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                   </Button>
                 </div>
               )}
-              
+
               {/* Damage cause options */}
               {!message.isUser && message.id === lastBotMessageId && showDamageOptions && (
                 <div className="mt-3 ml-8 grid grid-cols-3 gap-3 max-w-md">
@@ -390,7 +541,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                       <span className="text-sm font-medium text-foreground">Hagel</span>
                     </div>
                   </button>
-                  
+
                   <button
                     onClick={() => handleDamageOption('Sturmwind')}
                     className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
@@ -402,7 +553,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                       <span className="text-sm font-medium text-foreground">Sturmwind</span>
                     </div>
                   </button>
-                  
+
                   <button
                     onClick={() => handleDamageOption('Andere')}
                     className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
@@ -416,7 +567,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                   </button>
                 </div>
               )}
-              
+
               {/* Date picker */}
               {!message.isUser && message.id === lastBotMessageId && showDatePicker && (
                 <div className="mt-3 ml-8">
@@ -441,7 +592,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                           if (date) {
                             setSelectedDate(date);
                             setShowDatePicker(false);
-                            
+
                             // Add user message with selected date
                             const userDateMessage: Message = {
                               id: Date.now().toString(),
@@ -449,7 +600,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                               timestamp: new Date(),
                               isUser: true,
                             };
-                            
+
                             // Add bot asking for images
                             const botImageMessage: Message = {
                               id: (Date.now() + 1).toString(),
@@ -457,7 +608,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                               timestamp: new Date(),
                               isUser: false,
                             };
-                            
+
                             setMessages(prev => [...prev, userDateMessage, botImageMessage]);
                             setConversationState('date_selected');
                             setLastBotMessageId(botImageMessage.id);
@@ -472,12 +623,12 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                   </Popover>
                 </div>
               )}
-              
+
               {/* Image Upload */}
               {!message.isUser && message.id === lastBotMessageId && showImageUpload && (
                 <div className="mt-3 ml-8">
                   <div className="max-w-md">
-                    <div 
+                    <div
                       className="relative border-2 border-dashed border-border rounded-lg p-6 bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer"
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -523,7 +674,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                         </div>
                       </div>
                     </div>
-                    
+
                     {uploadedImages.length > 0 && (
                       <div className="mt-3 space-y-2">
                         <p className="text-xs text-muted-foreground">Hochgeladene Bilder:</p>
@@ -554,7 +705,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                         <div className="flex justify-end mt-3">
                           <Button
                             size="sm"
-                            onClick={() => {
+                            onClick={async () => {
                               setShowImageUpload(false);
                               const confirmMessage: Message = {
                                 id: Date.now().toString(),
@@ -562,14 +713,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                                 timestamp: new Date(),
                                 isUser: true,
                               };
-                              const finalMessage: Message = {
-                                id: (Date.now() + 1).toString(),
-                                text: 'Vielen Dank! Ihre Schadensmeldung wurde erfasst. Das System wird nun die Daten verarbeiten und Sie erhalten weitere Informationen per E-Mail.',
-                                timestamp: new Date(),
-                                isUser: false,
-                              };
-                              setMessages(prev => [...prev, confirmMessage, finalMessage]);
-                              setConversationState('initial');
+                              setMessages(prev => [...prev, confirmMessage]);
+                              await produceEstimateAndFinalize();
                             }}
                           >
                             Fertig
@@ -577,13 +722,13 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                         </div>
                       </div>
                     )}
-                    
+
                     {uploadedImages.length === 0 && (
                       <div className="flex justify-end mt-3">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
+                          onClick={async () => {
                             setShowImageUpload(false);
                             const skipMessage: Message = {
                               id: Date.now().toString(),
@@ -591,14 +736,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                               timestamp: new Date(),
                               isUser: true,
                             };
-                            const finalMessage: Message = {
-                              id: (Date.now() + 1).toString(),
-                              text: 'Vielen Dank! Ihre Schadensmeldung wurde erfasst. Das System wird nun die Daten verarbeiten und Sie erhalten weitere Informationen per E-Mail.',
-                              timestamp: new Date(),
-                              isUser: false,
-                            };
-                            setMessages(prev => [...prev, skipMessage, finalMessage]);
-                            setConversationState('initial');
+                            setMessages(prev => [...prev, skipMessage]);
+                            await produceEstimateAndFinalize();
                           }}
                         >
                           Überspringen
