@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Tables } from '@/integrations/supabase/types';
 // Removed dialog imports; images will be shown inline in the claims panel
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
+import { Trash2 } from 'lucide-react';
 
 interface AnalyticsMapViewProps {
     onTokenSet?: (token: string) => void;
@@ -67,6 +68,28 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [viewerOpen, setViewerOpen] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+    const [deletingId, setDeletingId] = useState<string | number | null>(null);
+
+    const handleDeleteClaim = async (id: string | number) => {
+        try {
+            setClaimsError(null);
+            setDeletingId(id);
+            const { error } = await supabase.from('claims').delete().eq('id', String(id));
+            if (error) {
+                setClaimsError(error.message);
+                return;
+            }
+            setClaims((prev) => (prev ? prev.filter((cl) => cl.id !== id) : prev));
+            if (selectedClaim?.id === id) {
+                setViewerOpen(false);
+                setSelectedClaim(null);
+                setImageUrls([]);
+                setImageLoading(false);
+            }
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     // Load cached token on component mount
     useEffect(() => {
@@ -883,13 +906,36 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                                 setCurrentImageIndex(0);
                                             }}
                                         >
-                                            <div className="flex items-center justify-between mb-1">
+                                            <div className="flex items-center justify-between mb-1 gap-2">
                                                 <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                                                     {c.damage_type}
                                                 </Badge>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {c.claim_date ? new Date(c.claim_date).toLocaleDateString() : new Date(c.created_at).toLocaleDateString()}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {c.claim_date ? new Date(c.claim_date).toLocaleDateString() : new Date(c.created_at).toLocaleDateString()}
+                                                    </span>
+                                                    <ConfirmDialog
+                                                        trigger={
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-muted-foreground hover:text-red-600 hover:bg-red-600/10"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                aria-label="Schadenmeldung löschen"
+                                                                disabled={deletingId === c.id}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        }
+                                                        title="Löschen bestätigen"
+                                                        description="Möchten Sie diese Schadenmeldung dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+                                                        confirmText={deletingId === c.id ? 'Löschen…' : 'Ja, löschen'}
+                                                        cancelText="Abbrechen"
+                                                        onConfirm={() => {
+                                                            handleDeleteClaim(c.id);
+                                                        }}
+                                                    />
+                                                </div>
                                             </div>
                                             {c.description && (
                                                 <p className="text-sm text-foreground/90 line-clamp-3">{c.description}</p>
