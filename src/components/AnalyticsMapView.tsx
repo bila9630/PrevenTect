@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Tables } from '@/integrations/supabase/types';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface AnalyticsMapViewProps {
     onTokenSet?: (token: string) => void;
@@ -58,6 +59,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [claimsLoading, setClaimsLoading] = useState(false);
     const [claimsError, setClaimsError] = useState<string | null>(null);
     const [showClaimsPanel, setShowClaimsPanel] = useState(true);
+    const [selectedClaim, setSelectedClaim] = useState<Tables<'claims'> | null>(null);
+    const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+    const [imageUrls, setImageUrls] = useState<string[]>([]);
+    const [imageLoading, setImageLoading] = useState(false);
 
     // Load cached token on component mount
     useEffect(() => {
@@ -386,6 +391,35 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         };
         checkClaim();
     }, [selectedBuilding]);
+
+    // Load images for selected claim when dialog opens and claim is set
+    useEffect(() => {
+        const loadImages = async () => {
+            if (!claimDialogOpen || !selectedClaim) return;
+            try {
+                setImageLoading(true);
+                setImageUrls([]);
+                const paths = selectedClaim.image_paths || [];
+                if (paths.length > 0) {
+                    const signedUrls: string[] = [];
+                    for (const p of paths) {
+                        const { data, error } = await supabase.storage
+                            .from('claims-uploads')
+                            .createSignedUrl(p, 60 * 10);
+                        if (error) {
+                            // Skip broken path
+                            continue;
+                        }
+                        if (data?.signedUrl) signedUrls.push(data.signedUrl);
+                    }
+                    setImageUrls(signedUrls);
+                }
+            } finally {
+                setImageLoading(false);
+            }
+        };
+        loadImages();
+    }, [claimDialogOpen, selectedClaim]);
 
     // Expose map controls to parent component
     useImperativeHandle(ref, () => ({
@@ -799,7 +833,14 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             {!claimsLoading && !claimsError && claims && claims.length > 0 && (
                                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                                     {claims.map((c) => (
-                                        <div key={c.id} className="rounded-md border border-border p-3 bg-card/60">
+                                        <div
+                                            key={c.id}
+                                            className="rounded-md border border-border p-3 bg-card/60 cursor-pointer hover:border-accent/60"
+                                            onClick={() => {
+                                                setSelectedClaim(c);
+                                                setClaimDialogOpen(true);
+                                            }}
+                                        >
                                             <div className="flex items-center justify-between mb-1">
                                                 <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                                                     {c.damage_type}
@@ -976,9 +1017,73 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Claim Details Dialog */}
+            <Dialog
+                open={claimDialogOpen}
+                onOpenChange={(v) => {
+                    setClaimDialogOpen(v);
+                    if (!v) {
+                        setSelectedClaim(null);
+                        setImageUrls([]);
+                        setImageLoading(false);
+                    }
+                }}
+            >
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center justify-between pr-10">
+                            <span>{selectedClaim?.damage_type || 'Schadenmeldung'}</span>
+                            <span className="text-sm text-muted-foreground">
+                                {selectedClaim?.claim_date
+                                    ? new Date(selectedClaim.claim_date).toLocaleDateString()
+                                    : selectedClaim
+                                        ? new Date(selectedClaim.created_at).toLocaleDateString()
+                                        : ''}
+                            </span>
+                        </DialogTitle>
+                        {selectedClaim?.location_name && (
+                            <DialogDescription>{selectedClaim.location_name}</DialogDescription>
+                        )}
+                    </DialogHeader>
+
+                    {selectedClaim?.description && (
+                        <p className="text-sm text-foreground/90 whitespace-pre-line mb-3">
+                            {selectedClaim.description}
+                        </p>
+                    )}
+
+                    <div className="space-y-2">
+                        {imageLoading && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <Skeleton className="h-32 w-full" />
+                                <Skeleton className="h-32 w-full" />
+                            </div>
+                        )}
+                        {!imageLoading && imageUrls.length > 0 && (
+                            <div className="grid grid-cols-2 gap-3">
+                                {imageUrls.map((url, idx) => (
+                                    <img
+                                        key={idx}
+                                        src={url}
+                                        alt={`Claim image ${idx + 1}`}
+                                        className="h-40 w-full object-cover rounded-md border border-border"
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        {!imageLoading && selectedClaim && (!selectedClaim.image_paths || selectedClaim.image_paths.length === 0) && (
+                            <div className="text-sm text-muted-foreground">Keine Bilder vorhanden.</div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 });
+
+// Dialog for selected claim details and images
+// Placed outside component if needed, but we render within component above using Dialog
 
 AnalyticsMapView.displayName = 'AnalyticsMapView';
 
