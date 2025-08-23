@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Droplets, Wind } from 'lucide-react';
 
 interface AnalyticsMapViewProps {
     onTokenSet?: (token: string) => void;
@@ -23,6 +24,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [isTokenSet, setIsTokenSet] = useState(false);
     const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
     const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
+    const [riskMode, setRiskMode] = useState<'water' | 'wind'>('water');
+    const [markersData, setMarkersData] = useState<Array<{ lat: number; lng: number; address: string; riskData?: any }>>([]);
 
     // Load cached token on component mount
     useEffect(() => {
@@ -32,6 +35,99 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             setIsTokenSet(true);
         }
     }, []);
+
+    // Helper function to create markers based on current risk mode
+    const createMarkers = (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => {
+        if (!map.current) return;
+
+        // Add new markers
+        const newMarkers = coordinates.map(coord => {
+            // Create custom marker element using SVG pin with bottom anchor
+            const el = document.createElement('div');
+            el.className = 'building-marker';
+            el.style.width = '20px';
+            el.style.height = '24px';
+            el.style.cursor = 'pointer';
+            el.style.display = 'block';
+            
+            let riskValue, minVal, maxVal, fillColor, shadowColor;
+            
+            if (riskMode === 'water') {
+                // Water damage risk (1-6 => green->red)
+                riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
+                minVal = 1;
+                maxVal = 6;
+            } else {
+                // Wind risk (20-40 => green->red)  
+                riskValue = coord.riskData?.STURM;
+                minVal = 20;
+                maxVal = 40;
+            }
+            
+            const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
+            const t = Number.isNaN(normalizedRisk) ? 0 : (normalizedRisk - minVal) / (maxVal - minVal);
+            const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
+            fillColor = `hsl(${hue}, 80%, 50%)`;
+            shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
+            
+            // SVG pin (small, crisp) - tip at bottom center
+            el.innerHTML = `
+              <svg width="20" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
+                <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="${fillColor}" stroke="white" stroke-width="1.5" />
+              </svg>
+            `;
+
+            // Add click handler to marker
+            el.addEventListener('click', () => {
+                setSelectedBuilding({
+                    address: coord.address,
+                    riskData: coord.riskData
+                });
+            });
+
+            const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+                .setLngLat([coord.lng, coord.lat])
+                .addTo(map.current!);
+
+            return marker;
+        });
+
+        // Fly to show all markers
+        if (coordinates.length > 0) {
+            if (coordinates.length === 1) {
+                // Single marker: zoom to it (gentler zoom for better interaction)
+                map.current.flyTo({
+                    center: [coordinates[0].lng, coordinates[0].lat],
+                    zoom: 14,
+                    duration: 1200,
+                    pitch: 30
+                });
+            } else {
+                // Multiple markers: fit bounds but cap maximum zoom
+                const bounds = new mapboxgl.LngLatBounds();
+                coordinates.forEach(coord => {
+                    bounds.extend([coord.lng, coord.lat]);
+                });
+                map.current.fitBounds(bounds, {
+                    padding: 120,
+                    duration: 1200,
+                    maxZoom: 14
+                });
+            }
+        }
+
+        setMarkers(newMarkers);
+    };
+
+    // Effect to update markers when risk mode changes
+    useEffect(() => {
+        if (markersData.length > 0) {
+            // Clear existing markers
+            markers.forEach(marker => marker.remove());
+            // Recreate with new coloring
+            createMarkers(markersData);
+        }
+    }, [riskMode]);
 
     // Expose map controls to parent component
     useImperativeHandle(ref, () => ({
@@ -57,6 +153,9 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => {
             if (!map.current) return;
 
+            // Store markers data for mode switching
+            setMarkersData(coordinates);
+
             // Clear existing markers first
             markers.forEach(marker => marker.remove());
 
@@ -71,76 +170,13 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 map.current.removeSource('dangerous-building-circles');
             }
 
-            // Add new markers for dangerous buildings
-            const newMarkers = coordinates.map(coord => {
-                // Create custom marker element using SVG pin with bottom anchor
-                const el = document.createElement('div');
-                el.className = 'dangerous-building-marker';
-                el.style.width = '20px';
-                el.style.height = '24px';
-                el.style.cursor = 'pointer';
-                el.style.display = 'block';
-                
-                // Determine marker color by water damage risk (1-6 => green->red)
-                const riskLevelRaw = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
-                const riskLevelNum = Math.max(1, Math.min(6, Number(riskLevelRaw)));
-                const t = Number.isNaN(riskLevelNum) ? 0 : (riskLevelNum - 1) / 5; // 0..1
-                const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
-                const fillColor = `hsl(${hue}, 80%, 50%)`;
-                const shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
-                
-                // SVG pin (small, crisp) - tip at bottom center
-                el.innerHTML = `
-                  <svg width="20" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
-                    <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="${fillColor}" stroke="white" stroke-width="1.5" />
-                  </svg>
-                `;
-
-                // Add click handler to marker
-                el.addEventListener('click', () => {
-                    setSelectedBuilding({
-                        address: coord.address,
-                        riskData: coord.riskData
-                    });
-                });
-
-                const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-                    .setLngLat([coord.lng, coord.lat])
-                    .addTo(map.current!);
-
-                return marker;
-            });
-
-            // Fly to show all markers
-            if (coordinates.length > 0) {
-                if (coordinates.length === 1) {
-                    // Single marker: zoom to it (gentler zoom for better interaction)
-                    map.current.flyTo({
-                        center: [coordinates[0].lng, coordinates[0].lat],
-                        zoom: 14,
-                        duration: 1200,
-                        pitch: 30
-                    });
-                } else {
-                    // Multiple markers: fit bounds but cap maximum zoom
-                    const bounds = new mapboxgl.LngLatBounds();
-                    coordinates.forEach(coord => {
-                        bounds.extend([coord.lng, coord.lat]);
-                    });
-                    map.current.fitBounds(bounds, {
-                        padding: 120,
-                        duration: 1200,
-                        maxZoom: 14
-                    });
-                }
-            }
-
-            setMarkers(newMarkers);
+            createMarkers(coordinates);
         },
         clearMarkers: () => {
             markers.forEach(marker => marker.remove());
             setMarkers([]);
             setSelectedBuilding(null);
+            setMarkersData([]);
 
             // Remove circle layers and sources
             if (map.current?.getLayer('dangerous-building-ripple')) {
@@ -153,7 +189,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 map.current.removeSource('dangerous-building-circles');
             }
         }
-    }), [markers]);
+    }), [markers, markersData, riskMode]);
 
     // Initialize map when both token is set and container is ready
     useEffect(() => {
@@ -432,51 +468,101 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         
                         {selectedBuilding.riskData && (
                             <>
-                                <div>
-                                    <h4 className="font-medium text-foreground mb-1">Wind Speed Risk</h4>
-                                    <div className="flex items-center space-x-2">
-                                        <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                                            {selectedBuilding.riskData.STURM}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {selectedBuilding.riskData.STURM_TEXT}
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <h4 className="font-medium text-foreground mb-1">Water Damage Risk</h4>
-                                    <div className="flex items-center space-x-2">
-                                        {(() => {
-                                            const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
-                                            const text = selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE;
-                                            let colorClass = "text-muted-foreground";
-                                            
-                                            if (value >= 200) {
-                                                colorClass = "text-red-500";
-                                            } else if (value >= 100) {
-                                                colorClass = "text-yellow-500";
-                                            }
-                                            
-                                            return (
-                                                <span className={`text-sm ${colorClass}`}>
-                                                    {text || 'N/A'}
+                                {riskMode === 'water' && (
+                                    <>
+                                        <div>
+                                            <h4 className="font-medium text-foreground mb-1">Wind Speed Risk</h4>
+                                            <div className="flex items-center space-x-2">
+                                                <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                                                    {selectedBuilding.riskData.STURM}
                                                 </span>
-                                            );
-                                        })()}
+                                                <span className="text-sm text-muted-foreground">
+                                                    {selectedBuilding.riskData.STURM_TEXT}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <h4 className="font-medium text-foreground mb-1">Water Damage Risk</h4>
+                                            <div className="flex items-center space-x-2">
+                                                {(() => {
+                                                    const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
+                                                    const text = selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE;
+                                                    let colorClass = "text-muted-foreground";
+                                                    
+                                                    if (value >= 200) {
+                                                        colorClass = "text-red-500";
+                                                    } else if (value >= 100) {
+                                                        colorClass = "text-yellow-500";
+                                                    }
+                                                    
+                                                    return (
+                                                        <span className={`text-sm ${colorClass}`}>
+                                                            {text || 'N/A'}
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                {riskMode === 'wind' && (
+                                    <div>
+                                        <h4 className="font-medium text-foreground mb-1">Water Damage Risk</h4>
+                                        <div className="flex items-center space-x-2">
+                                            {(() => {
+                                                const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
+                                                const text = selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE;
+                                                let colorClass = "text-muted-foreground";
+                                                
+                                                if (value >= 200) {
+                                                    colorClass = "text-red-500";
+                                                } else if (value >= 100) {
+                                                    colorClass = "text-yellow-500";
+                                                }
+                                                
+                                                return (
+                                                    <span className={`text-sm ${colorClass}`}>
+                                                        {text || 'N/A'}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </>
                         )}
                     </div>
                 </div>
             )}
 
-            {/* Legend for dangerous buildings */}
-            <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3 text-xs">
-                <div className="flex items-center space-x-2 mb-1">
-                    <div className="w-3 h-3 bg-red-600 rounded-full border border-white"></div>
-                    <span>Dangerous Buildings</span>
+            {/* Risk Mode Toggle Switch */}
+            <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3">
+                <div className="flex items-center space-x-3">
+                    <button
+                        onClick={() => setRiskMode('water')}
+                        className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                            riskMode === 'water' 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        <Droplets size={16} />
+                        <span className="text-xs font-medium">Water</span>
+                    </button>
+                    
+                    <button
+                        onClick={() => setRiskMode('wind')}
+                        className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                            riskMode === 'wind' 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        <Wind size={16} />
+                        <span className="text-xs font-medium">Wind</span>
+                    </button>
                 </div>
             </div>
         </div>
