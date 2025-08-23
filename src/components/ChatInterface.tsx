@@ -381,11 +381,43 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
       }
     };
 
+    // Fetch GWR_EGID from webgis API
+    const fetchGwrEgid = async (): Promise<string | null> => {
+      if (!selectedLocation) return null;
+      
+      try {
+        // Extract street name from location
+        const locationParts = selectedLocation.split(',');
+        const targetStreet = locationParts[0]?.trim();
+        if (!targetStreet) return null;
+
+        const encodedStreet = encodeURIComponent(targetStreet);
+        const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=ADRESSE LIKE '%${encodedStreet}%'&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          // Return the first matching GWR_EGID as string
+          const gwrEgid = data.features[0].attributes.GWR_EGID;
+          return gwrEgid ? gwrEgid.toString() : null;
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('Error fetching GWR_EGID:', error);
+        return null;
+      }
+    };
+
     // Save claim data to Supabase with linked images
     const saveClaimWithImages = async () => {
       try {
         // Upload images first and get their paths
         const imagePaths = await uploadImagesAsync();
+        
+        // Fetch GWR_EGID from webgis API
+        const gwrEgid = await fetchGwrEgid();
         
         const { error } = await supabase
           .from('claims')
@@ -396,7 +428,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
             description: damageDescription,
             claim_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
             images_count: uploadedImages.length,
-            image_paths: imagePaths
+            image_paths: imagePaths,
+            gwr_egid: gwrEgid
           });
 
         if (error) throw error;
