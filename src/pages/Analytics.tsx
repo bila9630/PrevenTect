@@ -203,12 +203,12 @@ const Analytics = () => {
         
         {/* Location Results Dropdown */}
         {showResults && locationResults.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-hidden z-20 scrollbar-hide">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto overflow-x-hidden z-20">
             {locationResults.map((location) => (
               <Button
                 key={location.id}
                 variant="ghost"
-                className="w-full justify-start p-3 h-auto text-left hover:bg-accent/50"
+                className="w-full justify-start p-3 h-auto text-left hover:bg-accent/50 text-wrap break-words"
                 onClick={() => handleLocationSelect(location)}
               >
                 <div className="flex flex-col items-start">
