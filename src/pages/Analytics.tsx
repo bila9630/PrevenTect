@@ -73,6 +73,7 @@ const Analytics = () => {
       const url = `https://api3.geo.admin.ch/rest/services/ech/SearchServer?sr=2056&searchText=${encodedText}&lang=de&type=locations`;
       const response = await fetch(url);
       const data = await response.json();
+      
 
       if (data.results && data.results.length > 0) {
         setLocationResults(prev => JSON.stringify(prev) !== JSON.stringify(data.results) ? data.results : prev);
@@ -105,9 +106,11 @@ const Analytics = () => {
       // Search for buildings on the specific street
       const encodedStreet = encodeURIComponent(targetStreet);
       const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=ADRESSE LIKE '%${encodedStreet}%'&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
+      console.log("API::::::", url)
 
       const response = await fetch(url);
       const data = await response.json();
+      console.log("DATA::::::", data)
 
       if (data.features && data.features.length > 0) {
         // Extract house numbers and sort by proximity to target number
