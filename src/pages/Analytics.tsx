@@ -103,9 +103,9 @@ const Analytics = () => {
       const targetStreet = "Brückenstrasse";
       const targetNumber = 73;
       
-      // Search for buildings on the specific street
-      const encodedStreet = encodeURIComponent(targetStreet);
-      const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=ADRESSE LIKE '%${encodedStreet}%'&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
+      // Search for buildings on the specific street, restrict to city Bern
+      const where = `ADRESSE LIKE '%${targetStreet}%' AND ADRESSE LIKE '% Bern%'`;
+      const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=${encodeURIComponent(where)}&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
       console.log("API::::::", url)
 
       const response = await fetch(url);
@@ -151,9 +151,13 @@ const Analytics = () => {
 
                 if (geocodeData.features && geocodeData.features.length > 0) {
                   const [lng, lat] = geocodeData.features[0].center;
-                  return { 
-                    lat, 
-                    lng, 
+                  // Validate within Bern bbox to avoid stray results (e.g., Hasle b. Burgdorf)
+                  const inBernBbox = lng >= 7.3000 && lng <= 7.6000 && lat >= 46.8000 && lat <= 47.1000;
+                  const isBernAddress = /\bBern\b/i.test(address) && !/Hasle/i.test(address);
+                  if (!inBernBbox || !isBernAddress) return null;
+                  return {
+                    lat,
+                    lng,
                     address,
                     riskData: building.attributes
                   };
