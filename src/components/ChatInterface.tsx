@@ -2,9 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, MapPin, KeyRound } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Send, MapPin, KeyRound, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -34,6 +38,9 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showQuickOptions, setShowQuickOptions] = useState<boolean>(true);
   const [showDamageOptions, setShowDamageOptions] = useState<boolean>(false);
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [conversationState, setConversationState] = useState<'initial' | 'damage_selected' | 'description_given' | 'date_needed'>('initial');
   const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
   const { toast } = useToast();
   const { sendWithFunctions } = useOpenAI(apiKey);
@@ -134,6 +141,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     };
 
     setMessages(prev => [...prev, botMessage]);
+    setConversationState('damage_selected');
   };
 
   const handleSendMessage = async (e: React.FormEvent | null, messageText?: string) => {
@@ -143,6 +151,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     if (!actualMessageText || isLoading) return;
 
     setShowQuickOptions(false);
+    setShowDamageOptions(false);
 
     // Add user message
     const userMessage: Message = {
@@ -154,6 +163,21 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
 
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
+
+    // Check if this is a description response after damage selection
+    if (conversationState === 'damage_selected') {
+      const dateMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Wann ist der Schaden aufgetreten? Bitte wählen Sie das Datum aus:',
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, dateMessage]);
+      setConversationState('date_needed');
+      setShowDatePicker(true);
+      setLastBotMessageId(dateMessage.id);
+      return;
+    }
 
     if (!apiKey) {
       const infoMessage: Message = {
@@ -388,6 +412,60 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                       <span className="text-sm font-medium text-foreground">Andere</span>
                     </div>
                   </button>
+                </div>
+              )}
+              
+              {/* Date picker */}
+              {!message.isUser && message.id === lastBotMessageId && showDatePicker && (
+                <div className="mt-3 ml-8">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[240px] justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "PPP") : <span>Datum auswählen</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setSelectedDate(date);
+                            setShowDatePicker(false);
+                            
+                            // Add user message with selected date
+                            const userDateMessage: Message = {
+                              id: Date.now().toString(),
+                              text: `Schaden aufgetreten am: ${format(date, "dd.MM.yyyy")}`,
+                              timestamp: new Date(),
+                              isUser: true,
+                            };
+                            
+                            // Add bot confirmation
+                            const botConfirmMessage: Message = {
+                              id: (Date.now() + 1).toString(),
+                              text: `Vielen Dank! Ihre Schadensmeldung wurde erfasst. Das System wird nun die Daten verarbeiten und Sie erhalten weitere Informationen per E-Mail.`,
+                              timestamp: new Date(),
+                              isUser: false,
+                            };
+                            
+                            setMessages(prev => [...prev, userDateMessage, botConfirmMessage]);
+                            setConversationState('initial');
+                          }
+                        }}
+                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
             </div>
