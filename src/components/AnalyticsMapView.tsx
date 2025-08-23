@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
-import mapboxgl from 'mapbox-gl';
+import mapboxgl, { type ProjectionSpecification } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,14 +7,31 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Slider } from '@/components/ui/slider';
 import { triggerConfettiSideCannons } from '@/lib/confetti';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AnalyticsMapViewProps {
     onTokenSet?: (token: string) => void;
 }
 
+// Minimal shape of risk data we use in this component
+interface RiskData {
+    GWR_EGID?: number | string;
+    STURM?: number;
+    STURM_TEXT?: string;
+    HOCHWASSER_FLIESSGEWAESSER?: number | null;
+    FLIESSGEWAESSER_TEXT_DE?: string;
+}
+
+interface MarkerInput {
+    lat: number;
+    lng: number;
+    address: string;
+    riskData?: RiskData;
+}
+
 interface AnalyticsMapViewRef {
     flyTo: (coordinates: [number, number], zoom?: number) => void;
-    addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => void;
+    addMarkers: (coordinates: MarkerInput[]) => void;
     clearMarkers: () => void;
     focusOnLocation: (coordinates: [number, number]) => void;
 }
@@ -25,9 +42,13 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [mapboxToken, setMapboxToken] = useState('');
     const [isTokenSet, setIsTokenSet] = useState(false);
     const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
-    const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
+    const [selectedBuilding, setSelectedBuilding] = useState<{
+        address: string;
+        riskData?: RiskData;
+        markerId: string;
+    } | null>(null);
     const [riskMode, setRiskMode] = useState<'water' | 'wind'>('water');
-    const [markersData, setMarkersData] = useState<Array<{ lat: number; lng: number; address: string; riskData?: any }>>([]);
+    const [markersData, setMarkersData] = useState<MarkerInput[]>([]);
     const [waterThreshold, setWaterThreshold] = useState([1]);
     const [windThreshold, setWindThreshold] = useState([25]);
 
@@ -41,7 +62,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     }, []);
 
     // Helper function to create markers based on current risk mode
-    const createMarkers = (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => {
+    const createMarkers = (coordinates: MarkerInput[]) => {
         if (!map.current) return;
 
         // Add new markers
@@ -73,7 +94,9 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 }
             };
 
-            let riskValue, minVal, maxVal, fillColor, shadowColor;
+            let riskValue: number | null | undefined;
+            let minVal: number;
+            let maxVal: number;
 
             if (riskMode === 'water') {
                 // Water damage risk (1-6 => green->red)
@@ -90,8 +113,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
             const t = Number.isNaN(normalizedRisk) ? 0 : (normalizedRisk - minVal) / (maxVal - minVal);
             const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
-            fillColor = `hsl(${hue}, 80%, 50%)`;
-            shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
+            const fillColor = `hsl(${hue}, 80%, 50%)`;
+            const shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
 
             // SVG pin in inner wrapper - not root element
             inner.innerHTML = `
@@ -311,6 +334,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 }, 50);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [riskMode, waterThreshold, windThreshold]);
 
     // Shrink all markers when selection is cleared
@@ -324,6 +348,31 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 n.setAttribute('data-selected', 'false');
             });
         }
+    }, [selectedBuilding]);
+
+    // On marker selection, check Supabase claims for this GWR_EGID
+    useEffect(() => {
+        const checkClaim = async () => {
+            try {
+                const egid = selectedBuilding?.riskData?.GWR_EGID;
+                if (!egid) return;
+                const { data, error } = await supabase
+                    .from('claims')
+                    .select('id')
+                    .eq('gwr_egid', String(egid))
+                    .limit(1);
+                if (error) {
+                    console.error('Supabase claims lookup error:', error.message);
+                    return;
+                }
+                if (data && data.length > 0) {
+                    console.log('Claim exists for EGID', egid, data[0]);
+                }
+            } catch (e) {
+                console.error('Error checking claim:', e);
+            }
+        };
+        checkClaim();
     }, [selectedBuilding]);
 
     // Expose map controls to parent component
@@ -349,7 +398,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 });
             }
         },
-        addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => {
+        addMarkers: (coordinates: MarkerInput[]) => {
             if (!map.current) return;
 
             // Store markers data for mode switching
@@ -388,6 +437,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 map.current.removeSource('dangerous-building-circles');
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [markers, markersData, riskMode]);
 
     // Initialize map when both token is set and container is ready
@@ -404,7 +454,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             map.current = new mapboxgl.Map({
                 container: mapContainer.current,
                 style: 'mapbox://styles/mapbox/dark-v11', // Better for analytics
-                projection: 'globe' as any,
+                projection: { name: 'globe' } as ProjectionSpecification,
                 zoom: 2,
                 center: [0, 20],
                 pitch: 45,
