@@ -47,19 +47,28 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             el.className = 'building-marker';
             el.style.cursor = 'pointer';
             el.style.display = 'block';
-            el.style.transition = 'transform 0.2s ease, z-index 0.1s linear';
+            el.style.position = 'relative';
             el.style.width = '20px';
             el.style.height = '24px';
-            el.style.transformOrigin = '50% 100%';
+            el.style.transition = 'z-index 0.1s linear';
             el.setAttribute('data-id', coord.address);
-            
+
+            // Inner wrapper that we scale (so Mapbox's anchor transform on the root is preserved)
+            const inner = document.createElement('div');
+            inner.className = 'marker-inner';
+            inner.style.width = '100%';
+            inner.style.height = '100%';
+            inner.style.transition = 'transform 0.2s ease';
+            inner.style.transformOrigin = '50% 100%';
+            inner.style.willChange = 'transform';
+
             const updateMarkerSize = (isSelected: boolean) => {
                 if (isSelected) {
-                    el.style.transform = 'scale(1.4)';
+                    inner.style.transform = 'scale(1.4)';
                     el.style.zIndex = '1000';
                     el.setAttribute('data-selected', 'true');
                 } else {
-                    el.style.transform = 'scale(1)';
+                    inner.style.transform = 'scale(1)';
                     el.style.zIndex = '1';
                     el.setAttribute('data-selected', 'false');
                 }
@@ -85,15 +94,16 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             fillColor = `hsl(${hue}, 80%, 50%)`;
             shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
             
-            // Initial size
-            updateMarkerSize(false);
-            
             // SVG pin (small, crisp) - tip at bottom center
-            el.innerHTML = `
+            inner.innerHTML = `
               <svg width="100%" height="100%" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
                 <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="${fillColor}" stroke="white" stroke-width="1.5" />
               </svg>
             `;
+            el.appendChild(inner);
+
+            // Initial size
+            updateMarkerSize(false);
 
             // Add click handler to marker
             el.addEventListener('click', () => {
@@ -102,7 +112,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 if (container) {
                     container.querySelectorAll('.building-marker').forEach((node) => {
                         const n = node as HTMLDivElement;
-                        n.style.transform = 'scale(1)';
+                        const innerEl = n.querySelector('.marker-inner') as HTMLDivElement | null;
+                        if (innerEl) innerEl.style.transform = 'scale(1)';
                         n.style.zIndex = '1';
                         n.setAttribute('data-selected', 'false');
                     });
@@ -173,7 +184,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         if (!selectedBuilding && mapContainer.current) {
             mapContainer.current.querySelectorAll('.building-marker').forEach((node) => {
                 const n = node as HTMLDivElement;
-                n.style.transform = 'scale(1)';
+                const innerEl = n.querySelector('.marker-inner') as HTMLDivElement | null;
+                if (innerEl) innerEl.style.transform = 'scale(1)';
                 n.style.zIndex = '1';
                 n.setAttribute('data-selected', 'false');
             });
