@@ -134,7 +134,7 @@ export const useOpenAI = (apiKey?: string) => {
   const generateRecommendations = async (ctx: RecommendCtx): Promise<RecItem[]> => {
     if (!clientRef.current) throw new Error('OpenAI client not initialized');
 
-    const sys = `Du bist ein Assistent der Gebäudeversicherung Bern (GVB). Formuliere präzise, praxisnahe Empfehlungen für Reparatur & Prävention nach einem Schaden. Antworte auf Deutsch.`;
+    const sys = `Du bist ein Assistent der Gebäudeversicherung Bern (GVB). Formuliere präzise, praxisnahe Empfehlungen für Reparatur & Prävention nach einem Schaden. Antworte auf Deutsch. Fokussiere dich besonders auf Materialwahl, Materialwechsel und schützende Bauteile (z. B. Holz → Stahl/Alu, Holz/Alu-Verbund, laminiertes Sicherheitsglas, Stahlgitter, Schutzleisten, Hagelwiderstandsklassen, Sturmklammern). Vermeide generische Hinweise wie "Dokumentation" oder reine Prozess-Tipps.`;
 
     const user = [
       `Kontext:`,
@@ -144,8 +144,9 @@ export const useOpenAI = (apiKey?: string) => {
       `- Datum: ${ctx.dateISO || 'unbekannt'}`,
       `- Anzahl Bilder: ${ctx.imagesCount ?? 0}`,
       '',
-      'Aufgabe: Gib 3–6 konkrete Empfehlungen als JSON-Array zurück. Jedes Element hat: {"title": string, "detail": string, "tags": string[]}.',
-      'Richte die Empfehlungen klar auf den Kontext aus (z. B. Fenster, Holzrahmen, Dach, Fassade, Wasser).',
+      'Aufgabe: Gib 3–6 KONKRETE, MATERIAL-FOKUSSIERTE Empfehlungen als JSON-Array zurück. Jedes Element hat: {"title": string, "detail": string, "tags": string[]}.',
+      'Pflicht: Mindestens 2 Einträge müssen explizit einen Materialwechsel oder ein Schutzbauteil empfehlen (z. B. Holzrahmen → Alu/Stahl, VSG/ESG-Glas, Schutzgitter/-leisten, Metallpaneele, HW-Klasse 4–5).',
+      'Richte die Empfehlungen strikt auf den Kontext aus (Fenster/Holzrahmen/Glas/Dach/Fassade/Wasser). Vermeide rein administrative Ratschläge.',
       'Gib NUR valides JSON zurück – ohne Fließtext, ohne Markdown.'
     ].join('\n');
 

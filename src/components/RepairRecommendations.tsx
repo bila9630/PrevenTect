@@ -161,19 +161,10 @@ export default function RepairRecommendations({ damageType, description, locatio
         ? aiItems.map((it, i) => ({ id: String(i), title: it.title, detail: it.detail, icon: <ShieldCheck className="h-4 w-4 text-primary" />, tags: it.tags }))
         : buildRecommendations(damageType, description);
 
-    const chips = [damageType, ...(description ? [description] : [])]
-        .filter(Boolean)
-        .slice(0, 2);
-
     return (
         <Card className="bg-transparent border-border">
             <CardHeader className="pb-3">
                 <CardTitle className="text-base">Empfehlungen zur Reparatur & Prävention</CardTitle>
-                <div className="mt-2 flex flex-wrap gap-2">
-                    {chips.map((c, i) => (
-                        <Badge key={i} variant="secondary" className="max-w-[200px] truncate">{c as string}</Badge>
-                    ))}
-                </div>
             </CardHeader>
             <CardContent className="space-y-3">
                 {recs.map((r) => (
@@ -183,8 +174,8 @@ export default function RepairRecommendations({ damageType, description, locatio
                             <div className="flex items-center gap-2">
                                 <p className="font-medium text-sm text-foreground">{r.title}</p>
                                 <div className="hidden md:flex flex-wrap gap-1">
-                                    {(r.tags || []).map((t) => (
-                                        <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
+                                    {(r.tags || []).slice(0, 1).map((t, idx) => (
+                                        <Badge key={`${t}-${idx}`} variant="outline" className="text-[10px]">{t}</Badge>
                                     ))}
                                 </div>
                             </div>
