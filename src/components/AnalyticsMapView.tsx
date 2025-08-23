@@ -11,7 +11,7 @@ interface AnalyticsMapViewProps {
 
 interface AnalyticsMapViewRef {
     flyTo: (coordinates: [number, number], zoom?: number) => void;
-    addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => void;
+    addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => void;
     clearMarkers: () => void;
     focusOnLocation: (coordinates: [number, number]) => void;
 }
@@ -22,6 +22,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [mapboxToken, setMapboxToken] = useState('');
     const [isTokenSet, setIsTokenSet] = useState(false);
     const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
+    const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
 
     // Load cached token on component mount
     useEffect(() => {
@@ -53,7 +54,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 });
             }
         },
-        addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => {
+        addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string; riskData?: any }>) => {
             if (!map.current) return;
 
             // Clear existing markers first
@@ -87,18 +88,16 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                   </svg>
                 `;
 
-                // No extra styles needed for SVG marker
+                // Add click handler to marker
+                el.addEventListener('click', () => {
+                    setSelectedBuilding({
+                        address: coord.address,
+                        riskData: coord.riskData
+                    });
+                });
 
                 const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
                     .setLngLat([coord.lng, coord.lat])
-                    .setPopup(
-                        new mapboxgl.Popup({ offset: 25 }).setHTML(
-                            `<div style="font-size: 14px; font-weight: 500; color: #dc2626;">
-                <strong>⚠️ Dangerous Building</strong><br/>
-                ${coord.address}
-              </div>`
-                        )
-                    )
                     .addTo(map.current!);
 
                 return marker;
@@ -133,6 +132,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         clearMarkers: () => {
             markers.forEach(marker => marker.remove());
             setMarkers([]);
+            setSelectedBuilding(null);
 
             // Remove circle layers and sources
             if (map.current?.getLayer('dangerous-building-ripple')) {
@@ -403,15 +403,61 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 Analytics Map
             </div>
 
+            {/* Risk Information Panel */}
+            {selectedBuilding && (
+                <div className="absolute top-4 right-4 w-80 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-foreground">Risks</h3>
+                        <button 
+                            onClick={() => setSelectedBuilding(null)}
+                            className="text-muted-foreground hover:text-foreground text-sm p-1"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                        <div>
+                            <h4 className="font-medium text-foreground mb-1">Address</h4>
+                            <p className="text-sm text-muted-foreground">{selectedBuilding.address}</p>
+                        </div>
+                        
+                        {selectedBuilding.riskData && (
+                            <>
+                                <div>
+                                    <h4 className="font-medium text-foreground mb-1">Wind Speed Risk</h4>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                                            {selectedBuilding.riskData.STURM}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">
+                                            {selectedBuilding.riskData.STURM_TEXT}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h4 className="font-medium text-foreground mb-1">Water Damage Risk</h4>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                                            {selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER ?? 'N/A'}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">
+                                            {selectedBuilding.riskData.FLIESSGEWAESSER_TEXT_DE}
+                                        </span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Legend for dangerous buildings */}
             <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3 text-xs">
                 <div className="flex items-center space-x-2 mb-1">
                     <div className="w-3 h-3 bg-red-600 rounded-full border border-white"></div>
                     <span>Dangerous Buildings</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 border-2 border-red-600 rounded-full bg-red-600/20"></div>
-                    <span>Risk Zone</span>
                 </div>
             </div>
         </div>

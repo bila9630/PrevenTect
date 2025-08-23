@@ -151,7 +151,12 @@ const Analytics = () => {
 
                 if (geocodeData.features && geocodeData.features.length > 0) {
                   const [lng, lat] = geocodeData.features[0].center;
-                  return { lat, lng, address };
+                  return { 
+                    lat, 
+                    lng, 
+                    address,
+                    riskData: building.attributes
+                  };
                 }
                 return null;
               } catch (error) {
