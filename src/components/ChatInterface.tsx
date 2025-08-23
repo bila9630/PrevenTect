@@ -73,6 +73,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
   const [selectedDamageType, setSelectedDamageType] = useState<string | null>(null);
   const [damageDescription, setDamageDescription] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<number[] | null>(null);
   const [aiRecItems, setAIRecItems] = useState<Array<{ title: string; detail: string; tags?: string[] }>>([]);
 
   // Helper to extract a city/region label from a selected location string
@@ -390,7 +391,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
           .from('claims')
           .insert({
             location_name: selectedLocation,
-            coordinates: null, // Will be populated when we add map coordinates
+            coordinates: selectedCoordinates ? JSON.stringify(selectedCoordinates) : null,
             damage_type: selectedDamageType || 'Unbekannt',
             description: damageDescription,
             claim_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
@@ -719,6 +720,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
             setMessages(prev => [...prev, locationMessage]);
             if (loc.success) {
               setSelectedLocation(loc.location || address);
+              setSelectedCoordinates(loc.coordinates || null);
               setShowDamageOptions(true);
               setLastBotMessageId(locationMessage.id);
             }
