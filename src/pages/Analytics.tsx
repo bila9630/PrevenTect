@@ -172,6 +172,8 @@ const Analytics = () => {
 
           if (validCoordinates.length > 0) {
             mapRef.current?.addMarkers(validCoordinates);
+            // After markers adjust the view, re-focus tightly on the area of interest
+            mapRef.current?.flyTo([7.4333, 46.9548], 18);
             toast.success(`Found ${dangerousBuildings.length} dangerous building(s) near ${targetAddress}, ${validCoordinates.length} mapped`);
           } else {
             toast.error('Could not geocode dangerous addresses');
