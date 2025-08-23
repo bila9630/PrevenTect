@@ -631,7 +631,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             {/* Risk Information Panel */}
             {selectedBuilding && (
-                <div className="absolute top-4 right-4 w-80 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
+                <div className="absolute top-4 right-16 w-80 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-semibold text-foreground">Risks</h3>
                         <button 
