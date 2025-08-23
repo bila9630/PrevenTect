@@ -64,6 +64,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
   // Show simulation options after the follow-up question
   const [showSimulationOptions, setShowSimulationOptions] = useState<boolean>(false);
   const [showSnowOptions, setShowSnowOptions] = useState<boolean>(false);
+  const [showStormMitigationOptions, setShowStormMitigationOptions] = useState<boolean>(false);
   const { toast } = useToast();
   const { sendWithFunctions, estimateCoverage, generateRecommendations } = useOpenAI(apiKey);
 
@@ -243,6 +244,61 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
         choice === 'do_nothing'
           ? 'Verstanden. Bitte beachten Sie: Zu hohe Schneelast und Eiszapfen können gefährlich werden. Tipp: Schneelast beobachten und Gefahrenstellen sichern.'
           : 'Gute Wahl! Das reduziert Schäden durch Dachlast und herabfallenden Schnee. So beugen Sie Risiken effektiv vor.',
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    // End snow effect before starting the next simulation, if available
+    try { onSnowToggle?.(false); } catch { /* noop */ }
+
+    // Follow-up: Start second simulation focused on storm mitigation options
+    const stormAsk: Message = {
+      id: (Date.now() + 2).toString(),
+      text: 'Welche bauliche Maßnahme priorisieren Sie, um Sturmschäden am Gebäude am effektivsten zu reduzieren? Wählen Sie eine Option.',
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, userSelection, botMsg, stormAsk]);
+    setLastBotMessageId(stormAsk.id);
+    setShowStormMitigationOptions(true);
+  };
+
+  const handleStormMitigationOption = (
+    choice: 'reinforce_roof' | 'upgrade_openings' | 'secure_facade'
+  ) => {
+    setShowStormMitigationOptions(false);
+
+    const optionMap: Record<string, { label: string; followup: string }> = {
+      reinforce_roof: {
+        label: 'Dachdeckung mit Sturmklammern nachrüsten',
+        followup:
+          'Erhöht die Widerstandsklasse der Deckung und reduziert Abdeckungen bei Böen.',
+      },
+      upgrade_openings: {
+        label: 'Fenster: VSG + geprüfte Läden',
+        followup:
+          'Reduziert Glasbruch und Einwirkungen durch Flugkörper an Öffnungen.',
+      },
+      secure_facade: {
+        label: 'Attika/Fassadenpaneele zusätzlich verankern',
+        followup:
+          'Mindert Abhebe-/Ausrissrisiken an exponierten Bauteilen.',
+      },
+    };
+
+    const sel = optionMap[choice];
+
+    const userSelection: Message = {
+      id: Date.now().toString(),
+      text: sel.label,
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      text: sel.followup,
       timestamp: new Date(),
       isUser: false,
     };
@@ -781,6 +837,36 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
                   <Button variant="outline" size="sm" onClick={() => handleSnowOption('clear_roof')} className="text-left justify-start text-sm w-fit">Schnee rechtzeitig vom Dach entfernen 🧹</Button>
                   <Button variant="outline" size="sm" onClick={() => handleSnowOption('install_guards')} className="text-left justify-start text-sm w-fit">Schneefanggitter installieren 🛡️</Button>
                   <Button variant="outline" size="sm" onClick={() => handleSnowOption('do_nothing')} className="text-left justify-start text-sm w-fit">Nichts unternehmen 😬</Button>
+                </div>
+              )}
+
+              {/* Storm mitigation options (second simulation) */}
+              {!message.isUser && message.id === lastBotMessageId && showStormMitigationOptions && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStormMitigationOption('reinforce_roof')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Dachdeckung mit Sturmklammern nachrüsten
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStormMitigationOption('upgrade_openings')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Fenster: VSG + geprüfte Läden
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStormMitigationOption('secure_facade')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Attika/Fassadenpaneele zusätzlich verankern
+                  </Button>
                 </div>
               )}
 
