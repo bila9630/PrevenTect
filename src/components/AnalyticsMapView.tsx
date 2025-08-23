@@ -157,7 +157,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 map.current.fitBounds(bounds, {
                     padding: 120,
                     duration: 1200,
-                    maxZoom: 14
+                    maxZoom: 18
                 });
             }
         }
