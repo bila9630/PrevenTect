@@ -4,7 +4,14 @@ import ChatInterface from '@/components/ChatInterface';
 
 const Index = () => {
   const [mapboxToken, setMapboxToken] = useState('');
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<{
+    flyTo: (coordinates: [number, number], zoom?: number) => void;
+    toggleRain: (enabled: boolean) => void;
+    stopRotation: () => void;
+    getCenter: () => [number, number] | null;
+    showRoute: (routeCoords: number[][], start: [number, number], end: [number, number]) => void;
+    clearRoute: () => void;
+  } | null>(null);
 
   const handleLocationRequest = async (address: string) => {
     if (!mapboxToken || !mapRef.current) return;
@@ -23,10 +30,7 @@ const Index = () => {
         // Zoom to the location and start rotation after a delay
         mapRef.current.flyTo([lng, lat], 18);
 
-        // Start rotation around the building after the flyTo animation completes
-        setTimeout(() => {
-          mapRef.current.rotateAroundLocation([lng, lat]);
-        }, 2500);
+        // MapView will start gentle rotation after flyTo automatically
 
         return { success: true, location: placeName, coordinates: [lng, lat] };
       } else {
@@ -50,6 +54,49 @@ const Index = () => {
     }
   };
 
+  // Helper: generate a random destination within 3km radius from center
+  const randomDestinationWithinRadius = (center: [number, number], radiusMeters = 3000): [number, number] => {
+    const [lng, lat] = center;
+    const r = radiusMeters / 111320; // ~ meters per degree latitude
+    const u = Math.random();
+    const v = Math.random();
+    const w = r * Math.sqrt(u);
+    const t = 2 * Math.PI * v;
+    const dx = w * Math.cos(t);
+    const dy = w * Math.sin(t);
+    const newLat = lat + dy;
+    const newLng = lng + dx / Math.cos((lat * Math.PI) / 180);
+    return [newLng, newLat];
+  };
+
+  const handleRequestPartners = async () => {
+    const token = mapboxToken;
+    const ref = mapRef.current;
+    if (!token || !ref) return;
+
+    // Get current center as start
+    const center: [number, number] | null = ref.getCenter?.() || null;
+    if (!center) return;
+
+  // Pick random destination within 3km
+  const dest = randomDestinationWithinRadius(center, 3000);
+
+    try {
+      // Use Mapbox Directions API (driving profile)
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${center[0]},${center[1]};${dest[0]},${dest[1]}?geometries=geojson&access_token=${token}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const route = data?.routes?.[0]?.geometry?.coordinates as number[][] | undefined;
+      if (!route || route.length === 0) return;
+
+      // Draw route, show markers, fit bounds, and stop rotation
+      ref.stopRotation?.();
+      ref.showRoute?.(route, [center[0], center[1]], [dest[0], dest[1]]);
+    } catch (e) {
+      console.error('Failed to fetch directions', e);
+    }
+  };
+
   return (
     <div className="h-full flex">
       {/* Map Section */}
@@ -62,7 +109,7 @@ const Index = () => {
       {/* Chat Section */}
       <div className="flex-1 p-4">
         <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
-          <ChatInterface onLocationRequest={handleLocationRequest} onRainToggle={handleRainToggle} />
+          <ChatInterface onLocationRequest={handleLocationRequest} onRainToggle={handleRainToggle} onRequestPartners={handleRequestPartners} />
         </div>
       </div>
     </div>
