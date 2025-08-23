@@ -13,8 +13,8 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-  <Toaster />
-  <Sonner position="bottom-left" offset={8} />
+      <Toaster />
+      <Sonner position="bottom-left" />
       <BrowserRouter>
         <Layout>
           <Routes>

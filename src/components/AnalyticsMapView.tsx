@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Slider } from '@/components/ui/slider';
 
 interface AnalyticsMapViewProps {
@@ -771,14 +772,20 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                 if (selectedBuilding) {
                                     // Show selected building address
                                     return (
-                                        <Button
-                                            className="w-full py-3 px-4 font-medium bg-red-600 hover:bg-red-700 text-white"
-                                            onClick={() => {
+                                        <ConfirmDialog
+                                            trigger={
+                                                <Button className="w-full py-3 px-4 font-medium bg-red-600 hover:bg-red-700 text-white">
+                                                    Info an {selectedBuilding.address} senden!
+                                                </Button>
+                                            }
+                                            title="Sind Sie sicher?"
+                                            description={`Möchten Sie die Informationen an ${selectedBuilding.address} senden? Diese Aktion kann nicht rückgängig gemacht werden.`}
+                                            confirmText="Ja, senden"
+                                            cancelText="Abbrechen"
+                                            onConfirm={() => {
                                                 console.log(`Sending info to ${selectedBuilding.address}`);
                                             }}
-                                        >
-                                            Info an {selectedBuilding.address} senden!
-                                        </Button>
+                                        />
                                     );
                                 } else {
                                     // No selection - show count of visible markers
@@ -796,23 +803,29 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                     const hasEnoughMarkers = visibleMarkersCount > 0;
 
                                     return (
-                                        <Button
-                                            className={`w-full py-3 px-4 font-medium ${hasEnoughMarkers
-                                                ? 'bg-red-600 hover:bg-red-700 text-white'
-                                                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                                                }`}
-                                            disabled={!hasEnoughMarkers}
-                                            onClick={() => {
-                                                if (hasEnoughMarkers) {
-                                                    console.log(`Sending info to ${visibleMarkersCount} properties`);
-                                                }
-                                            }}
-                                        >
-                                            {hasEnoughMarkers
-                                                ? `Info an ${visibleMarkersCount} Liegenschaften senden!`
-                                                : 'Info an Liegenschaften senden'
+                                        <ConfirmDialog
+                                            trigger={
+                                                <Button
+                                                    className={`w-full py-3 px-4 font-medium ${hasEnoughMarkers
+                                                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                                                        : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                                        }`}
+                                                    disabled={!hasEnoughMarkers}
+                                                >
+                                                    {hasEnoughMarkers
+                                                        ? `Info an ${visibleMarkersCount} Liegenschaften senden!`
+                                                        : 'Info an Liegenschaften senden'
+                                                    }
+                                                </Button>
                                             }
-                                        </Button>
+                                            title="Sind Sie sicher?"
+                                            description={`Möchten Sie die Informationen an ${visibleMarkersCount} Liegenschaften senden? Diese Aktion kann nicht rückgängig gemacht werden.`}
+                                            confirmText="Ja, senden"
+                                            cancelText="Abbrechen"
+                                            onConfirm={() => {
+                                                console.log(`Sending info to ${visibleMarkersCount} properties`);
+                                            }}
+                                        />
                                     );
                                 }
                             })()}
