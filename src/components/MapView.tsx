@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card } from '@/components/ui/card';
@@ -11,8 +11,6 @@ interface MapViewProps {
 
 interface MapViewRef {
   flyTo: (coordinates: [number, number], zoom?: number) => void;
-  rotateAroundLocation: (coordinates: [number, number]) => void;
-  stopRotation: () => void;
   toggleRain: (enabled: boolean) => void;
 }
 
@@ -33,8 +31,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
   const [isRainEnabled, setIsRainEnabled] = useState(false);
-  const [isRotating, setIsRotating] = useState(false);
-  const rotationRef = useRef<number | null>(null);
 
   // Rain effect helper function
   const toggleRainEffect = (enabled: boolean) => {
@@ -70,36 +66,10 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
     }
   };
 
-  // Camera rotation function
-  const rotateCamera = useCallback((timestamp: number) => {
-    if (!map.current || !isRotating) return;
-
-    // Calculate rotation angle (about 10 degrees per second)
-    const rotation = (timestamp / 100) % 360;
-
-    map.current.rotateTo(rotation, { duration: 0 });
-
-    if (isRotating) {
-      rotationRef.current = requestAnimationFrame(rotateCamera);
-    }
-  }, [isRotating]);
-
-  // Stop rotation function
-  const stopCameraRotation = () => {
-    setIsRotating(false);
-    if (rotationRef.current) {
-      cancelAnimationFrame(rotationRef.current);
-      rotationRef.current = null;
-    }
-  };
-
   // Expose map controls to parent component
   useImperativeHandle(ref, () => ({
     flyTo: (coordinates: [number, number], zoom = 12) => {
       if (map.current) {
-        // Stop any ongoing rotation
-        stopCameraRotation();
-
         map.current.flyTo({
           center: coordinates,
           zoom: zoom,
@@ -107,25 +77,11 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
         });
       }
     },
-    rotateAroundLocation: (coordinates: [number, number]) => {
-      if (!map.current) return;
-
-      // Stop any existing rotation
-      stopCameraRotation();
-
-      // Set the center and start rotation
-      map.current.setCenter(coordinates);
-      setIsRotating(true);
-      rotationRef.current = requestAnimationFrame(rotateCamera);
-    },
-    stopRotation: () => {
-      stopCameraRotation();
-    },
     toggleRain: (enabled: boolean) => {
       setIsRainEnabled(enabled);
       toggleRainEffect(enabled);
     }
-  }), [rotateCamera]);
+  }), []);
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {
@@ -149,16 +105,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       });
 
       console.log('Map instance created successfully');
-
-      // Add navigation controls
-      map.current.addControl(
-        new mapboxgl.NavigationControl({
-          visualizePitch: true,
-        }),
-        'top-right'
-      );
-
-      // Enable scroll zoom for better user interaction
 
       // Add atmosphere and fog effects
       map.current.on('style.load', () => {
@@ -246,8 +192,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       // Interaction event listeners
       const onInteractionStart = () => {
         userInteracting = true;
-        // Stop rotation when user interacts
-        stopCameraRotation();
       };
 
       const onInteractionEnd = () => {
@@ -290,7 +234,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   useEffect(() => {
     return () => {
-      stopCameraRotation();
       if (currentMarker) {
         currentMarker.remove();
       }
@@ -358,11 +301,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
       {/* Subtle overlay for enhanced space theme */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-background/5 rounded-lg" />
-
-      {/* Brand label */}
-      <div className="absolute top-4 left-4 text-foreground/80 font-medium text-sm tracking-wide">
-        Map
-      </div>
     </div>
   );
 });
