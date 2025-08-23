@@ -773,15 +773,15 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                         step={1}
                                         className="w-48"
                                     />
-                                    <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 pointer-events-none">
-                                        <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
-                                            {windThreshold[0]} km/h
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                    <span>0 km/h</span>
-                                    <span>50+ km/h</span>
+                                     <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 pointer-events-none">
+                                         <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
+                                             {windThreshold[0] * 4} km/h
+                                         </span>
+                                     </div>
+                                 </div>
+                                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                     <span>100 km/h</span>
+                                     <span>152+ km/h</span>
                                 </div>
                             </div>
                         )}
