@@ -7,11 +7,15 @@ const Index = () => {
   const mapRef = useRef<{
     flyTo: (coordinates: [number, number], zoom?: number) => void;
     toggleRain: (enabled: boolean) => void;
+    toggleSnow: (enabled: boolean) => void;
     stopRotation: () => void;
     getCenter: () => [number, number] | null;
     showRoute: (routeCoords: number[][], start: [number, number], end: [number, number]) => void;
     clearRoute: () => void;
+    orbitAt: (coordinates: [number, number], zoom?: number) => void;
   } | null>(null);
+
+  const [lastBuildingCenter, setLastBuildingCenter] = useState<[number, number] | null>(null);
 
   const handleLocationRequest = async (address: string) => {
     if (!mapboxToken || !mapRef.current) return;
@@ -29,6 +33,7 @@ const Index = () => {
 
         // Zoom to the location and start rotation after a delay
         mapRef.current.flyTo([lng, lat], 18);
+        setLastBuildingCenter([lng, lat]);
 
         // MapView will start gentle rotation after flyTo automatically
 
@@ -42,6 +47,16 @@ const Index = () => {
     }
   };
 
+  const handleOrbitBuilding = () => {
+    const ref = mapRef.current;
+    if (!ref) return;
+    const target = lastBuildingCenter || ref.getCenter?.() || null;
+    if (!target) return;
+    // Clear any route and orbit around the building
+    ref.clearRoute?.();
+    ref.orbitAt?.(target as [number, number], 18);
+  };
+
   const handleRainToggle = async (enabled: boolean) => {
     if (!mapRef.current) return;
 
@@ -51,6 +66,18 @@ const Index = () => {
     } catch (error) {
       console.error('Rain toggle error:', error);
       return { success: false, error: "Failed to toggle rain effect" };
+    }
+  };
+
+  const handleSnowToggle = async (enabled: boolean) => {
+    if (!mapRef.current) return;
+
+    try {
+      mapRef.current.toggleSnow(enabled);
+      return { success: true, enabled };
+    } catch (error) {
+      console.error('Snow toggle error:', error);
+      return { success: false, error: "Failed to toggle snow effect" };
     }
   };
 
@@ -109,7 +136,7 @@ const Index = () => {
       {/* Chat Section */}
       <div className="flex-1 p-4">
         <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
-          <ChatInterface onLocationRequest={handleLocationRequest} onRainToggle={handleRainToggle} onRequestPartners={handleRequestPartners} />
+          <ChatInterface onLocationRequest={handleLocationRequest} onRainToggle={handleRainToggle} onRequestPartners={handleRequestPartners} onOrbitBuilding={handleOrbitBuilding} onSnowToggle={handleSnowToggle} />
         </div>
       </div>
     </div>

@@ -31,9 +31,11 @@ interface ChatInterfaceProps {
   onLocationRequest?: (address: string) => Promise<{ success: boolean; location?: string; coordinates?: number[]; error?: string }>;
   onRainToggle?: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
   onRequestPartners?: () => void;
+  onOrbitBuilding?: () => void;
+  onSnowToggle?: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
 }
 
-const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: ChatInterfaceProps) => {
+const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onOrbitBuilding, onSnowToggle }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -61,6 +63,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
   const [thanksMessageId, setThanksMessageId] = useState<string>('');
   // Show simulation options after the follow-up question
   const [showSimulationOptions, setShowSimulationOptions] = useState<boolean>(false);
+  const [showSnowOptions, setShowSnowOptions] = useState<boolean>(false);
   const { toast } = useToast();
   const { sendWithFunctions, estimateCoverage, generateRecommendations } = useOpenAI(apiKey);
 
@@ -179,14 +182,33 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
     };
 
     if (choice === 'yes') {
+      // Notify parent to return camera to the building and start orbit
+      try {
+        onOrbitBuilding?.();
+      } catch (e) {
+        // no-op
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('onOrbitBuilding callback failed', e);
+        }
+      }
+      // Enable snow effect for the simulation
+      if (onSnowToggle) {
+        onSnowToggle(true).catch(() => { });
+      }
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Ich kann dir bei der Schadensimulation helfen. Welche Art von Schaden möchtest du simulieren?',
+        text: 'Schneesturm-Simulation aktiviert. Welche Maßnahme würden Sie ergreifen, um Ihr Gebäude zu schützen?',
         timestamp: new Date(),
         isUser: false,
       };
       setMessages(prev => [...prev, userSelection, botMsg]);
       setLastBotMessageId(botMsg.id);
+      // Show three selectable options related to snow storm
+      setShowDamageOptions(false);
+      setShowRepairOptions(false);
+      setShowDatePicker(false);
+      setShowImageUpload(false);
+      setShowSnowOptions(true);
     } else {
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -196,6 +218,37 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
       };
       setMessages(prev => [...prev, userSelection, botMsg]);
     }
+  };
+
+  const handleSnowOption = (choice: 'clear_roof' | 'install_guards' | 'do_nothing') => {
+    setShowSnowOptions(false);
+
+    const optionText =
+      choice === 'clear_roof'
+        ? 'Schnee rechtzeitig vom Dach entfernen 🧹'
+        : choice === 'install_guards'
+          ? 'Schneefanggitter installieren 🛡️'
+          : 'Nichts unternehmen 😬';
+
+    const userSelection: Message = {
+      id: Date.now().toString(),
+      text: optionText,
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      text:
+        choice === 'do_nothing'
+          ? 'Verstanden. Das kann riskant sein – Dachlast und Eiszapfen können gefährlich werden. Wir merken das für die Auswertung.'
+          : 'Gute Wahl! Das reduziert Schäden durch Dachlast und herabfallenden Schnee. Wir merken das für die Auswertung.',
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, userSelection, botMsg]);
+    setLastBotMessageId(botMsg.id);
   };
 
   // Produce a preliminary insurance estimate and finalize the flow
@@ -714,25 +767,20 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                 </div>
               )}
 
-              {/* Simulation options after follow-up */}
+              {/* Simulation options after follow-up (agree/decline) */}
               {!message.isUser && message.id === lastBotMessageId && showSimulationOptions && (
                 <div className="mt-3 ml-8 flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSimulationOption('yes')}
-                    className="text-left justify-start text-sm w-fit"
-                  >
-                    Ja, sehr gerne! 😊
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSimulationOption('no')}
-                    className="text-left justify-start text-sm w-fit"
-                  >
-                    Nee, kein Bock
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSimulationOption('yes')} className="text-left justify-start text-sm w-fit">Ja, sehr gerne! 😊</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSimulationOption('no')} className="text-left justify-start text-sm w-fit">Nee, kein Bock</Button>
+                </div>
+              )}
+
+              {/* Snow storm scenario options */}
+              {!message.isUser && message.id === lastBotMessageId && showSnowOptions && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleSnowOption('clear_roof')} className="text-left justify-start text-sm w-fit">Schnee rechtzeitig vom Dach entfernen 🧹</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSnowOption('install_guards')} className="text-left justify-start text-sm w-fit">Schneefanggitter installieren 🛡️</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSnowOption('do_nothing')} className="text-left justify-start text-sm w-fit">Nichts unternehmen 😬</Button>
                 </div>
               )}
 
