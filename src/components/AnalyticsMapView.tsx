@@ -396,10 +396,16 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
     useEffect(() => {
         return () => {
-            markers.forEach(marker => marker.remove());
-            map.current?.remove();
+            try {
+                map.current?.remove();
+                // ensure reference is cleared to avoid double-destroy
+                // @ts-ignore
+                map.current = null;
+            } catch (e) {
+                console.error('Error removing map on unmount:', e);
+            }
         };
-    }, [markers]);
+    }, []);
 
     if (!isTokenSet) {
         return (
