@@ -72,27 +72,51 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             // Add new markers for dangerous buildings
             const newMarkers = coordinates.map(coord => {
-                // Create custom marker element for dangerous buildings
+                // Create custom marker element shaped like a geo pin
                 const el = document.createElement('div');
                 el.className = 'dangerous-building-marker';
-                el.style.backgroundColor = '#dc2626'; // Red color for danger
-                el.style.width = '12px';
-                el.style.height = '12px';
-                el.style.borderRadius = '50%';
-                el.style.border = '3px solid white';
-                el.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.6)';
+                el.style.width = '20px';
+                el.style.height = '20px';
                 el.style.cursor = 'pointer';
-                el.style.animation = 'pulse 2s infinite';
+                el.style.position = 'relative';
+                
+                // Create the pin shape using CSS
+                el.innerHTML = `
+                    <div style="
+                        width: 16px;
+                        height: 16px;
+                        background: #dc2626;
+                        border-radius: 50% 50% 50% 0;
+                        transform: rotate(-45deg);
+                        border: 2px solid white;
+                        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.6);
+                        position: absolute;
+                        top: 0;
+                        left: 2px;
+                        animation: bounce 2s infinite;
+                    "></div>
+                    <div style="
+                        width: 6px;
+                        height: 6px;
+                        background: white;
+                        border-radius: 50%;
+                        position: absolute;
+                        top: 3px;
+                        left: 7px;
+                        transform: rotate(45deg);
+                        z-index: 1;
+                    "></div>
+                `;
 
-                // Add pulsing animation for dangerous buildings
+                // Add bouncing animation for geo pin markers
                 if (!document.getElementById('danger-marker-styles')) {
                     const style = document.createElement('style');
                     style.id = 'danger-marker-styles';
                     style.textContent = `
-            @keyframes pulse {
-              0% { transform: scale(1); box-shadow: 0 4px 12px rgba(220, 38, 38, 0.6); }
-              50% { transform: scale(1.1); box-shadow: 0 6px 16px rgba(220, 38, 38, 0.8); }
-              100% { transform: scale(1); box-shadow: 0 4px 12px rgba(220, 38, 38, 0.6); }
+            @keyframes bounce {
+              0%, 20%, 50%, 80%, 100% { transform: rotate(-45deg) translateY(0); }
+              40% { transform: rotate(-45deg) translateY(-3px); }
+              60% { transform: rotate(-45deg) translateY(-2px); }
             }
           `;
                     document.head.appendChild(style);
@@ -142,8 +166,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         'circle-radius': {
                             base: 1.75,
                             stops: [
-                                [12, 30],
-                                [22, 100]
+                                [12, 15],
+                                [22, 40]
                             ]
                         },
                         'circle-color': '#dc2626',
@@ -163,8 +187,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         'circle-radius': {
                             base: 1.75,
                             stops: [
-                                [12, 40],
-                                [22, 125]
+                                [12, 20],
+                                [22, 50]
                             ]
                         },
                         'circle-color': '#dc2626',
