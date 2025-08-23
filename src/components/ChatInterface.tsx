@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   id: string;
@@ -345,6 +346,37 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
     timers.push(window.setTimeout(() => advanceStep(1), 1500));
     timers.push(window.setTimeout(() => advanceStep(2), 3000));
     const start = performance.now();
+
+    // Start background image upload to Supabase without blocking UI
+    const uploadImagesAsync = async () => {
+      if (uploadedImages.length === 0) return;
+      
+      try {
+        const uploadPromises = uploadedImages.map(async (file, index) => {
+          const fileName = `${Date.now()}-${index}-${file.name}`;
+          const { error } = await supabase.storage
+            .from('claims-uploads')
+            .upload(fileName, file);
+          
+          if (error) throw error;
+          return fileName;
+        });
+
+        await Promise.all(uploadPromises);
+        toast({ 
+          description: `${uploadedImages.length} Bild(er) erfolgreich hochgeladen` 
+        });
+      } catch (error) {
+        console.error('Upload error:', error);
+        toast({ 
+          description: 'Bilder-Upload fehlgeschlagen', 
+          variant: 'destructive' 
+        });
+      }
+    };
+
+    // Start upload in background
+    uploadImagesAsync();
 
     // Build context for estimation
     const ctx: {
