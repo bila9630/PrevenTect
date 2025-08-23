@@ -178,8 +178,20 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             // Clear existing markers but preserve state
             markers.forEach(marker => marker.remove());
             
+            // Filter markers based on threshold first
+            const filteredMarkers = markersData.filter(coord => {
+                let riskValue;
+                if (riskMode === 'water') {
+                    riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
+                    return Number(riskValue) >= waterThreshold[0];
+                } else {
+                    riskValue = coord.riskData?.STURM;
+                    return Number(riskValue) >= windThreshold[0];
+                }
+            });
+            
             // Recreate markers without automatic flying
-            const newMarkers = markersData.map(coord => {
+            const newMarkers = filteredMarkers.map(coord => {
                 // Create simple marker element - root stays untouched for Mapbox positioning
                 const el = document.createElement('div');
                 el.className = 'building-marker';
@@ -208,33 +220,24 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 };
                 
                 let riskValue, minVal, maxVal, fillColor, shadowColor;
-                let isFiltered = false;
                 
                 if (riskMode === 'water') {
                     // Water damage risk (1-6 => green->red)
                     riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
                     minVal = 1;
                     maxVal = 6;
-                    isFiltered = Number(riskValue) < waterThreshold[0];
                 } else {
                     // Wind risk (25-38 => green->red)  
                     riskValue = coord.riskData?.STURM;
                     minVal = 25;
                     maxVal = 38;
-                    isFiltered = Number(riskValue) < windThreshold[0];
                 }
                 
-                if (isFiltered) {
-                    // Gray out filtered markers
-                    fillColor = `hsl(0, 0%, 60%)`;
-                    shadowColor = `hsla(0, 0%, 60%, 0.6)`;
-                } else {
-                    const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
-                    const t = Number.isNaN(normalizedRisk) ? 0 : (normalizedRisk - minVal) / (maxVal - minVal);
-                    const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
-                    fillColor = `hsl(${hue}, 80%, 50%)`;
-                    shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
-                }
+                const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
+                const t = Number.isNaN(normalizedRisk) ? 0 : (normalizedRisk - minVal) / (maxVal - minVal);
+                const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
+                fillColor = `hsl(${hue}, 80%, 50%)`;
+                shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
                 
                 // SVG pin in inner wrapper - not root element
                 inner.innerHTML = `
@@ -739,14 +742,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             </button>
                         </div>
 
-                        {/* Slider with centered value */}
+                        {/* Slider with value above and min/max below */}
                         {riskMode === 'water' ? (
-                            <div className="space-y-2 relative">
-                                <div className="flex justify-between text-xs text-muted-foreground">
-                                    <span>0cm</span>
-                                    <span>200cm+</span>
-                                </div>
-                                <div className="relative">
+                            <div className="space-y-1 relative">
+                                <div className="relative h-6">
                                     <Slider
                                         value={waterThreshold}
                                         onValueChange={setWaterThreshold}
@@ -755,20 +754,20 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                         step={1}
                                         className="w-48"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 pointer-events-none">
                                         <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
-                                            {waterThreshold[0]} (≈{Math.round((waterThreshold[0] - 1) * 40)}cm)
+                                            ~{Math.round((waterThreshold[0] - 1) * 40)}cm
                                         </span>
                                     </div>
                                 </div>
+                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                    <span>0cm</span>
+                                    <span>200cm+</span>
+                                </div>
                             </div>
                         ) : (
-                            <div className="space-y-2 relative">
-                                <div className="flex justify-between text-xs text-muted-foreground">
-                                    <span>0 km/h</span>
-                                    <span>50+ km/h</span>
-                                </div>
-                                <div className="relative">
+                            <div className="space-y-1 relative">
+                                <div className="relative h-6">
                                     <Slider
                                         value={windThreshold}
                                         onValueChange={setWindThreshold}
@@ -777,11 +776,15 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                         step={1}
                                         className="w-48"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 pointer-events-none">
                                         <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
                                             {windThreshold[0]} km/h
                                         </span>
                                     </div>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                    <span>0 km/h</span>
+                                    <span>50+ km/h</span>
                                 </div>
                             </div>
                         )}
