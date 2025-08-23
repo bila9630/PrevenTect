@@ -717,12 +717,12 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             Risiko Filter
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 pt-6">
                         {/* Risk Mode Toggle */}
-                        <div className="flex items-center space-x-3 mb-12">
+                        <div className="grid grid-cols-2 gap-2 mb-8">
                             <button
                                 onClick={() => setRiskMode('water')}
-                                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                                className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${
                                     riskMode === 'water' 
                                         ? 'bg-primary text-primary-foreground' 
                                         : 'text-muted-foreground hover:text-foreground'
@@ -733,7 +733,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             
                             <button
                                 onClick={() => setRiskMode('wind')}
-                                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                                className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${
                                     riskMode === 'wind' 
                                         ? 'bg-primary text-primary-foreground' 
                                         : 'text-muted-foreground hover:text-foreground'
