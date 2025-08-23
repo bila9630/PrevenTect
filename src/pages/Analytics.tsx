@@ -131,8 +131,13 @@ const Analytics = () => {
         return streetName;
       }).filter((street: string) => street && !street.includes('Bern')) || [];
       
-      // Add our known nearby streets as fallback
-      const knownStreets = ['Felshaldenweg', 'Schwarztorstrasse', 'Monbijoustrasse', 'Eigerstrasse', 'Helvetiaplatz'];
+      // Comprehensive list of streets in the Bern area (3004-3007)
+      const knownStreets = [
+        'Felshaldenweg', 'Schwarztorstrasse', 'Monbijoustrasse', 'Eigerstrasse', 'Helvetiaplatz',
+        'Fährstrasse', 'Felsenaustrasse', 'Aarestrasse', 'Effingerstrasse', 'Dalmaziquai',
+        'Marzilistrasse', 'Kornhausbrücke', 'Schänzlihalde', 'Schönberg', 'Rosengarten',
+        'Bernstrasse', 'Breitenrainstrasse', 'Lorrainestrasse', 'Wylerstrasse', 'Viktoriastrasse'
+      ];
       const allStreets = [...new Set([...streets, ...knownStreets])];
       
       console.log("Streets to query:", allStreets);
