@@ -11,7 +11,6 @@ type RepairRecommendationsProps = {
     description?: string;
     location?: string;
     aiItems?: AIItem[];
-    onRequestPartners?: () => void;
 };
 
 type RecItem = {
@@ -157,7 +156,7 @@ function buildRecommendations(damageType?: string, description?: string): RecIte
     return recs;
 }
 
-export default function RepairRecommendations({ damageType, description, location, aiItems, onRequestPartners }: RepairRecommendationsProps) {
+export default function RepairRecommendations({ damageType, description, location, aiItems }: RepairRecommendationsProps) {
     const recs = (aiItems && aiItems.length)
         ? aiItems.map((it, i) => ({ id: String(i), title: it.title, detail: it.detail, icon: <ShieldCheck className="h-4 w-4 text-primary" />, tags: it.tags }))
         : buildRecommendations(damageType, description);
@@ -188,7 +187,7 @@ export default function RepairRecommendations({ damageType, description, locatio
                 ))}
 
                 <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="default" className="gap-2" onClick={onRequestPartners}>
+                    <Button size="sm" variant="default" className="gap-2">
                         <Hammer className="h-4 w-4" /> Partnerbetriebe anfragen
                     </Button>
                     <Button

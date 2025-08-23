@@ -715,7 +715,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {/* Risk Mode Toggle */}
-                        <div className="flex items-center space-x-3 mb-6">
+                        <div className="flex items-center space-x-3 mb-8">
                             <button
                                 onClick={() => setRiskMode('water')}
                                 className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
@@ -780,8 +780,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                     </div>
                                 </div>
                                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                    <span>0 km/h</span>
-                                    <span>50+ km/h</span>
+                                    <span>25 km/h</span>
+                                    <span>38+ km/h</span>
                                 </div>
                             </div>
                         )}

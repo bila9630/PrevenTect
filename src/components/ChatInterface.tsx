@@ -28,10 +28,9 @@ interface Message {
 interface ChatInterfaceProps {
   onLocationRequest?: (address: string) => Promise<{ success: boolean; location?: string; coordinates?: number[]; error?: string }>;
   onRainToggle?: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
-  onRequestPartners?: () => void;
 }
 
-const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: ChatInterfaceProps) => {
+const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -571,7 +570,6 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                         description={damageDescription || undefined}
                         location={selectedLocation || undefined}
                         aiItems={aiRecItems}
-                        onRequestPartners={onRequestPartners}
                       />
                     ) : (
                       <p className="text-sm leading-relaxed">{message.text}</p>

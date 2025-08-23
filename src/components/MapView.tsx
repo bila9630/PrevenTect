@@ -13,9 +13,6 @@ interface MapViewRef {
   flyTo: (coordinates: [number, number], zoom?: number) => void;
   toggleRain: (enabled: boolean) => void;
   stopRotation: () => void;
-  getCenter: () => [number, number] | null;
-  showRoute: (routeCoords: number[][], start: [number, number], end: [number, number]) => void;
-  clearRoute: () => void;
 }
 
 const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
@@ -36,11 +33,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
   const [isRainEnabled, setIsRainEnabled] = useState(false);
-  const routeStartMarker = useRef<mapboxgl.Marker | null>(null);
-  const routeEndMarker = useRef<mapboxgl.Marker | null>(null);
-  const spinEnabledRef = useRef(true);
-
-  type MapWithRain = mapboxgl.Map & { setRain?: (opts: unknown) => void; setProjection?: (name: string) => void };
 
   // Camera rotation function
   const rotateCamera = useCallback((timestamp: number) => {
@@ -51,7 +43,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   }, []);
 
   // Rain effect helper function
-  const toggleRainEffect = useCallback((enabled: boolean) => {
+  const toggleRainEffect = (enabled: boolean) => {
     if (!map.current) return;
 
     if (enabled) {
@@ -67,7 +59,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
         ];
       };
 
-      (map.current as MapWithRain).setRain?.({
+      (map.current as any).setRain({
         density: zoomBasedReveal(0.5),
         intensity: 1.0,
         color: '#a8adbc',
@@ -80,9 +72,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
         'center-thinning': 0
       });
     } else {
-      (map.current as MapWithRain).setRain?.(null as unknown as undefined);
+      (map.current as any).setRain(null);
     }
-  }, []);
+  };
 
   // Expose map controls to parent component
   useImperativeHandle(ref, () => ({
@@ -104,9 +96,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
         // Start rotation when the ease animation finishes
         map.current.once('moveend', () => {
-          if (spinEnabledRef.current) {
-            rafId.current = requestAnimationFrame(rotateCamera);
-          }
+          rafId.current = requestAnimationFrame(rotateCamera);
         });
       }
     },
@@ -119,84 +109,8 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
         cancelAnimationFrame(rafId.current);
         rafId.current = null;
       }
-      spinEnabledRef.current = false;
-      if (map.current) {
-        map.current.stop();
-        map.current.rotateTo(0, { duration: 0 });
-      }
-    },
-    getCenter: () => {
-      if (!map.current) return null;
-      const c = map.current.getCenter();
-      return [c.lng, c.lat];
-    },
-    showRoute: (routeCoords: number[][], start: [number, number], end: [number, number]) => {
-      const m = map.current;
-      if (!m) return;
-
-      // stop any rotation/spin
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current);
-        rafId.current = null;
-      }
-      spinEnabledRef.current = false;
-
-      // add or update route source
-      const sourceId = 'route';
-      const layerId = 'route';
-      const data: GeoJSON.Feature<GeoJSON.LineString> = {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: routeCoords as [number, number][]
-        }
-      };
-
-      if (m.getSource(sourceId)) {
-        (m.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(data as GeoJSON.Feature);
-      } else {
-        m.addSource(sourceId, {
-          type: 'geojson',
-          data
-        } satisfies mapboxgl.AnySourceData);
-        m.addLayer({
-          id: layerId,
-          type: 'line',
-          source: sourceId,
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#3887be',
-            'line-width': 5,
-            'line-opacity': 0.85
-          }
-        });
-      }
-
-      // add or update start/end markers
-      if (routeStartMarker.current) routeStartMarker.current.remove();
-      if (routeEndMarker.current) routeEndMarker.current.remove();
-      routeStartMarker.current = new mapboxgl.Marker({ color: '#10b981' }).setLngLat(start).addTo(m);
-      routeEndMarker.current = new mapboxgl.Marker({ color: '#ef4444' }).setLngLat(end).addTo(m);
-
-      // fit bounds to route
-      const bounds = new mapboxgl.LngLatBounds();
-      routeCoords.forEach((c) => bounds.extend(c as [number, number]));
-      m.easeTo({ bearing: 0, pitch: 0, duration: 0 });
-      m.fitBounds(bounds, { padding: 80, duration: 1200, maxZoom: 14 });
-    },
-    clearRoute: () => {
-      const m = map.current;
-      if (!m) return;
-      if (m.getLayer('route')) m.removeLayer('route');
-      if (m.getSource('route')) m.removeSource('route');
-      if (routeStartMarker.current) { routeStartMarker.current.remove(); routeStartMarker.current = null; }
-      if (routeEndMarker.current) { routeEndMarker.current.remove(); routeEndMarker.current = null; }
     }
-  }), [rotateCamera, toggleRainEffect]);
+  }), [rotateCamera]);
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {
@@ -213,15 +127,13 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/dark-v11',
+        projection: 'globe' as any,
         zoom: 2,
         center: [0, 20],
         pitch: 45,
       });
 
       console.log('Map instance created successfully');
-
-      // Try to enable globe projection if available
-      (map.current as MapWithRain).setProjection?.('globe');
 
       // Add atmosphere and fog effects
       map.current.on('style.load', () => {
@@ -288,13 +200,13 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       const maxSpinZoom = 5;
       const slowSpinZoom = 3;
       let userInteracting = false;
-      spinEnabledRef.current = true;
+      const spinEnabled = true;
 
       function spinGlobe() {
         if (!map.current) return;
 
         const zoom = map.current.getZoom();
-        if (spinEnabledRef.current && !userInteracting && zoom < maxSpinZoom) {
+        if (spinEnabled && !userInteracting && zoom < maxSpinZoom) {
           let distancePerSecond = 360 / secondsPerRevolution;
           if (zoom > slowSpinZoom) {
             const zoomDif = (maxSpinZoom - zoom) / (maxSpinZoom - slowSpinZoom);
