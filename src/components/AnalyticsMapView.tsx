@@ -175,6 +175,56 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     }
                 });
 
+                // Add click handlers to circles for address display
+                map.current.on('click', 'dangerous-building-circles', (e) => {
+                    if (e.features && e.features.length > 0) {
+                        const address = e.features[0].properties?.address;
+                        if (address) {
+                            new mapboxgl.Popup()
+                                .setLngLat(e.lngLat)
+                                .setHTML(`
+                                    <div style="font-size: 14px; font-weight: 500; color: #dc2626;">
+                                        <strong>⚠️ Dangerous Building</strong><br/>
+                                        ${address}
+                                    </div>
+                                `)
+                                .addTo(map.current!);
+                        }
+                    }
+                });
+
+                // Add click handlers to ripple circles too
+                map.current.on('click', 'dangerous-building-ripple', (e) => {
+                    if (e.features && e.features.length > 0) {
+                        const address = e.features[0].properties?.address;
+                        if (address) {
+                            new mapboxgl.Popup()
+                                .setLngLat(e.lngLat)
+                                .setHTML(`
+                                    <div style="font-size: 14px; font-weight: 500; color: #dc2626;">
+                                        <strong>⚠️ Dangerous Building</strong><br/>
+                                        ${address}
+                                    </div>
+                                `)
+                                .addTo(map.current!);
+                        }
+                    }
+                });
+
+                // Change cursor on hover
+                map.current.on('mouseenter', 'dangerous-building-circles', () => {
+                    if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+                });
+                map.current.on('mouseleave', 'dangerous-building-circles', () => {
+                    if (map.current) map.current.getCanvas().style.cursor = '';
+                });
+                map.current.on('mouseenter', 'dangerous-building-ripple', () => {
+                    if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+                });
+                map.current.on('mouseleave', 'dangerous-building-ripple', () => {
+                    if (map.current) map.current.getCanvas().style.cursor = '';
+                });
+
                 // Fly to show all markers
                 if (coordinates.length === 1) {
                     // Single marker: zoom to it (gentler zoom for better interaction)
