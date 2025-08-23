@@ -59,7 +59,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             
             const updateMarkerSize = (isSelected: boolean) => {
                 if (isSelected) {
-                    inner.style.transform = 'scale(1.2)';
+                    inner.style.transform = 'scale(1.5)';
                     el.style.zIndex = '1000';
                     el.setAttribute('data-selected', 'true');
                 } else {
