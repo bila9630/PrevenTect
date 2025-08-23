@@ -12,6 +12,7 @@ interface MapViewProps {
 interface MapViewRef {
   flyTo: (coordinates: [number, number], zoom?: number) => void;
   toggleRain: (enabled: boolean) => void;
+  addDangerousBuildings: (buildings: any[]) => void;
 }
 
 const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
@@ -31,6 +32,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
   const [isRainEnabled, setIsRainEnabled] = useState(false);
+  const [buildingMarkers, setBuildingMarkers] = useState<mapboxgl.Marker[]>([]);
 
   // Rain effect helper function
   const toggleRainEffect = (enabled: boolean) => {
@@ -80,8 +82,71 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
     toggleRain: (enabled: boolean) => {
       setIsRainEnabled(enabled);
       toggleRainEffect(enabled);
+    },
+    addDangerousBuildings: async (buildings: any[]) => {
+      if (!map.current || !mapboxgl.accessToken) return;
+      
+      // Clear existing building markers
+      buildingMarkers.forEach(marker => marker.remove());
+      setBuildingMarkers([]);
+      
+      const newMarkers: mapboxgl.Marker[] = [];
+      
+      for (const building of buildings) {
+        const { ADRESSE, HOCHWASSER_FLIESSGEWAESSER, FLIESSGEWAESSER_TEXT_DE } = building.attributes;
+        
+        // Consider dangerous if flood risk > 20cm or has significant flood risk
+        const isDangerous = HOCHWASSER_FLIESSGEWAESSER !== null && 
+          (HOCHWASSER_FLIESSGEWAESSER >= 3 || FLIESSGEWAESSER_TEXT_DE?.includes('> 200 cm'));
+        
+        if (isDangerous && ADRESSE) {
+          try {
+            // Geocode the address
+            const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(ADRESSE)}.json?access_token=${mapboxgl.accessToken}&limit=1`;
+            const response = await fetch(geocodeUrl);
+            const data = await response.json();
+            
+            if (data.features && data.features.length > 0) {
+              const [lng, lat] = data.features[0].center;
+              
+              // Create red marker
+              const el = document.createElement('div');
+              el.className = 'marker-danger';
+              el.style.cssText = `
+                background-color: #ef4444;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                cursor: pointer;
+              `;
+              
+              const marker = new mapboxgl.Marker(el)
+                .setLngLat([lng, lat])
+                .setPopup(
+                  new mapboxgl.Popup({ offset: 25 })
+                    .setHTML(`
+                      <div style="padding: 8px;">
+                        <h4 style="margin: 0 0 8px 0; font-weight: bold; color: #ef4444;">Gefährdetes Gebäude</h4>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Adresse:</strong> ${ADRESSE}</p>
+                        <p style="margin: 0; font-size: 12px;"><strong>Hochwasser:</strong> ${FLIESSGEWAESSER_TEXT_DE}</p>
+                      </div>
+                    `)
+                )
+                .addTo(map.current);
+              
+              newMarkers.push(marker);
+            }
+          } catch (error) {
+            console.error('Error geocoding address:', ADRESSE, error);
+          }
+        }
+      }
+      
+      setBuildingMarkers(newMarkers);
     }
-  }), []);
+  }), [buildingMarkers]);
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {
@@ -196,9 +261,10 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       if (currentMarker) {
         currentMarker.remove();
       }
+      buildingMarkers.forEach(marker => marker.remove());
       map.current?.remove();
     };
-  }, [currentMarker]);
+  }, [currentMarker, buildingMarkers]);
 
   if (!isTokenSet) {
     return (
