@@ -34,29 +34,20 @@ const Analytics = () => {
   const [locationResults, setLocationResults] = useState<LocationResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<LocationResult | null>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
 
   // Debounced search function
   const debouncedSearch = useCallback((searchText: string) => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
-    searchTimeoutRef.current = setTimeout(() => {
+
+    searchTimeoutRef.current = window.setTimeout(() => {
       if (searchText.trim()) {
-        setIsLoading(true);
+        // remove setIsLoading(true) here
         searchLocations(searchText);
       }
     }, 300);
-  }, []);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
   }, []);
 
   const searchLocations = useCallback(async (searchText: string) => {
@@ -66,14 +57,15 @@ const Analytics = () => {
       setIsLoading(false);
       return;
     }
-    
+
+    setIsLoading(true); // moved here
+
     try {
       const encodedText = encodeURIComponent(searchText);
       const url = `https://api3.geo.admin.ch/rest/services/ech/SearchServer?sr=2056&searchText=${encodedText}&lang=de&type=locations`;
-      
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.results && data.results.length > 0) {
         setLocationResults(prev => JSON.stringify(prev) !== JSON.stringify(data.results) ? data.results : prev);
         setShowResults(true);
@@ -94,23 +86,23 @@ const Analytics = () => {
 
   const searchBuildings = async (locationDetail: string) => {
     if (!locationDetail.trim()) return;
-    
+
     setIsLoading(true);
     try {
       const encodedAddress = encodeURIComponent(locationDetail);
       const url = `https://webgis.gvb.ch/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=ORTSCHAFT='Bern'&ADDRESSE=${encodedAddress}&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
-      
+
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.features && data.features.length > 0) {
         // Filter dangerous buildings (flood risk)
         const dangerousBuildings = data.features.filter((feature: any) => {
           const attrs = feature.attributes;
-          return attrs.HOCHWASSER_FLIESSGEWAESSER !== null && 
-                 attrs.FLIESSGEWAESSER_TEXT_DE !== 'keine Gefährdung';
+          return attrs.HOCHWASSER_FLIESSGEWAESSER !== null &&
+            attrs.FLIESSGEWAESSER_TEXT_DE !== 'keine Gefährdung';
         });
-        
+
         if (dangerousBuildings.length > 0) {
           // Get coordinates for dangerous addresses using Mapbox Geocoding
           const coordinates = await Promise.all(
@@ -120,7 +112,7 @@ const Analytics = () => {
                 const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${localStorage.getItem('mapbox-token')}`;
                 const geocodeResponse = await fetch(geocodeUrl);
                 const geocodeData = await geocodeResponse.json();
-                
+
                 if (geocodeData.features && geocodeData.features.length > 0) {
                   const [lng, lat] = geocodeData.features[0].center;
                   return { lat, lng, address };
@@ -132,9 +124,9 @@ const Analytics = () => {
               }
             })
           );
-          
+
           const validCoordinates = coordinates.filter(coord => coord !== null);
-          
+
           if (validCoordinates.length > 0) {
             mapRef.current?.addMarkers(validCoordinates);
             toast.success(`Found ${dangerousBuildings.length} dangerous building(s), ${validCoordinates.length} mapped`);
@@ -167,22 +159,21 @@ const Analytics = () => {
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchValue(value);
-    
+
     if (!value.trim()) {
       setLocationResults([]);
       setShowResults(false);
       setIsLoading(false);
       return;
     }
-    
+
     // Use debounced search to avoid interfering with typing
     debouncedSearch(value);
   }, [debouncedSearch]);
 
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (showResults && locationResults.length > 0) {
-        // Select first result on Enter
         handleLocationSelect(locationResults[0]);
       } else {
         searchBuildings(searchValue);
@@ -193,7 +184,7 @@ const Analytics = () => {
   return (
     <div className="h-full w-full relative">
       <MapView ref={mapRef} />
-      
+
       {/* Search Bar */}
       <div className="absolute top-4 left-4 z-10 w-80">
         <div className="relative">
@@ -203,9 +194,8 @@ const Analytics = () => {
             placeholder="Enter location to search for dangerous buildings..."
             value={searchValue}
             onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             className="w-full bg-background/90 backdrop-blur-sm border-border"
-            disabled={isLoading}
           />
           {isLoading && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -213,8 +203,8 @@ const Analytics = () => {
             </div>
           )}
         </div>
-        
-        <LocationDropdown 
+
+        <LocationDropdown
           showResults={showResults}
           locationResults={locationResults}
           onLocationSelect={handleLocationSelect}
