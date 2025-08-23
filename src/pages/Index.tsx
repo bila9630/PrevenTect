@@ -20,8 +20,8 @@ const Index = () => {
         const [lng, lat] = data.features[0].center;
         const placeName = data.features[0].place_name;
 
-        // Zoom to the location and start rotation
-        mapRef.current.flyToAndRotate([lng, lat], 18);
+        // Zoom to the location
+        mapRef.current.flyTo([lng, lat], 18);
 
         return { success: true, location: placeName, coordinates: [lng, lat] };
       } else {
