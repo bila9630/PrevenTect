@@ -157,10 +157,10 @@ const Analytics = () => {
 
   const handleLocationSelect = useCallback((location: LocationResult) => {
     setSelectedLocation(location);
-    setSearchValue(location.attrs.detail);
+    setSearchValue(location.attrs.label);
     setShowResults(false);
-    // Proceed with building search using the selected location
-    searchBuildings(location.attrs.detail);
+    // Use label (city name) instead of detail (full address with canton)
+    searchBuildings(location.attrs.label);
   }, []);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
