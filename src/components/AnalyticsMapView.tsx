@@ -81,13 +81,13 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 el.style.cursor = 'pointer';
                 el.style.display = 'block';
                 
-                // Determine marker color by water damage risk (1-6 => yellow->red)
+                // Determine marker color by water damage risk (1-6 => green->red)
                 const riskLevelRaw = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
                 const riskLevelNum = Math.max(1, Math.min(6, Number(riskLevelRaw)));
                 const t = Number.isNaN(riskLevelNum) ? 0 : (riskLevelNum - 1) / 5; // 0..1
-                const hue = 52 * (1 - t); // 52deg (yellow) to 0deg (red)
-                const fillColor = `hsl(${hue}, 90%, 50%)`;
-                const shadowColor = `hsla(${hue}, 90%, 50%, 0.6)`;
+                const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
+                const fillColor = `hsl(${hue}, 80%, 50%)`;
+                const shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
                 
                 // SVG pin (small, crisp) - tip at bottom center
                 el.innerHTML = `
