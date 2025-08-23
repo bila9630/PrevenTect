@@ -103,7 +103,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     setLastBotMessageId(botMessage.id);
   };
 
-  const handleDamageOption = (damageType: string) => {
+  const handleDamageOption = async (damageType: string) => {
     setShowDamageOptions(false);
     
     // Add user message
@@ -115,6 +115,15 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     };
 
     setMessages(prev => [...prev, userMessage]);
+
+    // Activate rain effect for Hagel or Sturmwind
+    if ((damageType === 'Hagel' || damageType === 'Sturmwind') && onRainToggle) {
+      try {
+        await onRainToggle(true);
+      } catch (error) {
+        console.error('Failed to activate rain effect:', error);
+      }
+    }
 
     // Add bot response
     const botMessage: Message = {
