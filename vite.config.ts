@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      '/api/webgis': {
+        target: 'https://webgis.gvb.ch',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/webgis/, ''),
+        secure: true
+      }
+    }
   },
   plugins: [
     react(),
