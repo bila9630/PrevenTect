@@ -74,6 +74,20 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [aiRecItems, setAIRecItems] = useState<Array<{ title: string; detail: string; tags?: string[] }>>([]);
 
+  // Helper to extract a city/region label from a selected location string
+  const extractCity = (location?: string | null): string | null => {
+    if (!location) return null;
+    const parts = location.split(',').map(p => p.trim()).filter(Boolean);
+    const candidates = parts.filter(p => /[A-Za-zÄÖÜäöüß]/.test(p));
+    if (candidates.length === 0) return null;
+    let cand = candidates[candidates.length - 1];
+    if (/schweiz|switzerland|deutschland|germany|österreich|austria/i.test(cand) && candidates.length >= 2) {
+      cand = candidates[candidates.length - 2];
+    }
+    cand = cand.replace(/\b\d{4,5}\b/g, '').trim();
+    return cand || null;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -196,9 +210,10 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
       if (onSnowToggle) {
         onSnowToggle(true).catch(() => { });
       }
+      const city = extractCity(selectedLocation) || 'Ihrer Region';
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Schneesturm-Simulation aktiviert. Welche Maßnahme würden Sie ergreifen, um Ihr Gebäude zu schützen?',
+        text: `Basierend auf den Daten für ${city} fällt regelmäßig viel Schnee und es kam in der Vergangenheit zu Schneestürmen. Welche Maßnahme würden Sie ergreifen, um Ihr Gebäude zu schützen?`,
         timestamp: new Date(),
         isUser: false,
       };
@@ -252,9 +267,10 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
     try { onSnowToggle?.(false); } catch { /* noop */ }
 
     // Follow-up: Start second simulation focused on storm mitigation options
+    const city = extractCity(selectedLocation) || 'Ihrer Region';
     const stormAsk: Message = {
       id: (Date.now() + 2).toString(),
-      text: 'Welche bauliche Maßnahme priorisieren Sie, um Sturmschäden am Gebäude am effektivsten zu reduzieren? Wählen Sie eine Option.',
+      text: `Auf Basis der Sturmereignisse in ${city} (böige Winde in der Vergangenheit): Welche bauliche Maßnahme priorisieren Sie, um Sturmschäden am Gebäude am effektivsten zu reduzieren? Wählen Sie eine Option.`,
       timestamp: new Date(),
       isUser: false,
     };
