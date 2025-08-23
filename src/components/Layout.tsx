@@ -31,7 +31,7 @@ const Layout = ({ children }: LayoutProps) => {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               )}
             >
-              Home
+              Startseite
             </Link>
             <Link
               to="/analytics"
@@ -42,7 +42,7 @@ const Layout = ({ children }: LayoutProps) => {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               )}
             >
-              Analytics
+              Analyse
             </Link>
           </nav>
         </div>
