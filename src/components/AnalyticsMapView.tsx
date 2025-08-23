@@ -705,79 +705,88 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 </div>
             )}
 
-            {/* Filter Controls */}
-            <div className="absolute bottom-20 right-4 z-10">
+            {/* Combined Risk Filter Controls */}
+            <div className="absolute bottom-4 right-4 z-10">
                 <Card className="bg-background/90 backdrop-blur-sm border-border shadow-lg">
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                            {riskMode === 'water' ? '🌊' : '💨'} Risk Filter
+                        <CardTitle className="text-sm">
+                            Risiko Filter
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {/* Risk Mode Toggle */}
+                        <div className="flex items-center space-x-3 mb-4">
+                            <button
+                                onClick={() => setRiskMode('water')}
+                                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                                    riskMode === 'water' 
+                                        ? 'bg-primary text-primary-foreground' 
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                <span className="text-xs font-medium">Wasser</span>
+                            </button>
+                            
+                            <button
+                                onClick={() => setRiskMode('wind')}
+                                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                                    riskMode === 'wind' 
+                                        ? 'bg-primary text-primary-foreground' 
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                <span className="text-xs font-medium">Wind</span>
+                            </button>
+                        </div>
+
+                        {/* Slider with centered value */}
                         {riskMode === 'water' ? (
-                            <div className="space-y-2">
+                            <div className="space-y-2 relative">
                                 <div className="flex justify-between text-xs text-muted-foreground">
                                     <span>0cm</span>
-                                    <span>Threshold: {waterThreshold[0]} (≈{Math.round((waterThreshold[0] - 1) * 40)}cm)</span>
                                     <span>200cm+</span>
                                 </div>
-                                <Slider
-                                    value={waterThreshold}
-                                    onValueChange={setWaterThreshold}
-                                    min={1}
-                                    max={6}
-                                    step={1}
-                                    className="w-48"
-                                />
+                                <div className="relative">
+                                    <Slider
+                                        value={waterThreshold}
+                                        onValueChange={setWaterThreshold}
+                                        min={1}
+                                        max={6}
+                                        step={1}
+                                        className="w-48"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
+                                            {waterThreshold[0]} (≈{Math.round((waterThreshold[0] - 1) * 40)}cm)
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-2 relative">
                                 <div className="flex justify-between text-xs text-muted-foreground">
                                     <span>0 km/h</span>
-                                    <span>Threshold: {windThreshold[0]} km/h</span>
                                     <span>50+ km/h</span>
                                 </div>
-                                <Slider
-                                    value={windThreshold}
-                                    onValueChange={setWindThreshold}
-                                    min={25}
-                                    max={38}
-                                    step={1}
-                                    className="w-48"
-                                />
+                                <div className="relative">
+                                    <Slider
+                                        value={windThreshold}
+                                        onValueChange={setWindThreshold}
+                                        min={25}
+                                        max={38}
+                                        step={1}
+                                        className="w-48"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
+                                            {windThreshold[0]} km/h
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </CardContent>
                 </Card>
-            </div>
-
-            {/* Risk Mode Toggle Switch */}
-            <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3">
-                <div className="flex items-center space-x-3">
-                    <button
-                        onClick={() => setRiskMode('water')}
-                        className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-                            riskMode === 'water' 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        <Droplets size={16} />
-                        <span className="text-xs font-medium">Wasser</span>
-                    </button>
-                    
-                    <button
-                        onClick={() => setRiskMode('wind')}
-                        className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-                            riskMode === 'wind' 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        <Wind size={16} />
-                        <span className="text-xs font-medium">Wind</span>
-                    </button>
-                </div>
             </div>
         </div>
     );
