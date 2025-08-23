@@ -165,14 +165,122 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     // Effect to update markers when risk mode changes
     useEffect(() => {
         if (markersData.length > 0) {
-            // Store current selection state
+            // Store current selection state and map state
             const currentSelection = selectedBuilding;
+            const currentCenter = map.current?.getCenter();
+            const currentZoom = map.current?.getZoom();
+            const currentPitch = map.current?.getPitch();
+            const currentBearing = map.current?.getBearing();
             
             // Clear existing markers but preserve state
             markers.forEach(marker => marker.remove());
             
-            // Recreate with new coloring
-            createMarkers(markersData);
+            // Recreate markers without automatic flying
+            const newMarkers = markersData.map(coord => {
+                // Create simple marker element - root stays untouched for Mapbox positioning
+                const el = document.createElement('div');
+                el.className = 'building-marker';
+                el.style.cursor = 'pointer';
+                el.style.width = '20px';
+                el.style.height = '24px';
+                el.setAttribute('data-id', coord.address);
+
+                // Inner wrapper for scaling - this won't interfere with Mapbox positioning
+                const inner = document.createElement('div');
+                inner.style.width = '100%';
+                inner.style.height = '100%';
+                inner.style.transition = 'transform 0.2s ease';
+                inner.style.transformOrigin = '50% 100%';
+                
+                const updateMarkerSize = (isSelected: boolean) => {
+                    if (isSelected) {
+                        inner.style.transform = 'scale(1.5)';
+                        el.style.zIndex = '1000';
+                        el.setAttribute('data-selected', 'true');
+                    } else {
+                        inner.style.transform = 'scale(1)';
+                        el.style.zIndex = '1';
+                        el.setAttribute('data-selected', 'false');
+                    }
+                };
+                
+                let riskValue, minVal, maxVal, fillColor, shadowColor;
+                
+                if (riskMode === 'water') {
+                    // Water damage risk (1-6 => green->red)
+                    riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
+                    minVal = 1;
+                    maxVal = 6;
+                } else {
+                    // Wind risk (20-40 => green->red)  
+                    riskValue = coord.riskData?.STURM;
+                    minVal = 20;
+                    maxVal = 40;
+                }
+                
+                const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
+                const t = Number.isNaN(normalizedRisk) ? 0 : (normalizedRisk - minVal) / (maxVal - minVal);
+                const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
+                fillColor = `hsl(${hue}, 80%, 50%)`;
+                shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
+                
+                // SVG pin in inner wrapper - not root element
+                inner.innerHTML = `
+                  <svg width="100%" height="100%" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 2px 6px ${shadowColor});">
+                    <path d="M12 2C8.14 2 5 5.08 5 8.86c0 5.19 7 12.28 7 12.28s7-7.09 7-12.28C19 5.08 15.86 2 12 2zm0 9.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" fill="${fillColor}" stroke="white" stroke-width="1.5" />
+                  </svg>
+                `;
+                el.appendChild(inner);
+
+                // Initial size
+                updateMarkerSize(false);
+
+                // Add click handler to marker
+                el.addEventListener('click', () => {
+                    const container = mapContainer.current;
+                    const wasSelected = el.getAttribute('data-selected') === 'true';
+                    if (container) {
+                        container.querySelectorAll('.building-marker').forEach((node) => {
+                            const n = node as HTMLDivElement;
+                            const innerEl = n.querySelector('div') as HTMLDivElement | null;
+                            if (innerEl) innerEl.style.transform = 'scale(1)';
+                            n.style.zIndex = '1';
+                            n.setAttribute('data-selected', 'false');
+                        });
+                    }
+
+                    if (wasSelected) {
+                        updateMarkerSize(false);
+                        setSelectedBuilding(null);
+                        return;
+                    }
+
+                    updateMarkerSize(true);
+                    setSelectedBuilding({
+                        address: coord.address,
+                        riskData: coord.riskData,
+                        markerId: coord.address
+                    });
+                });
+
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+                    .setLngLat([coord.lng, coord.lat])
+                    .addTo(map.current!);
+
+                return marker;
+            });
+
+            setMarkers(newMarkers);
+            
+            // Restore map state after markers are recreated
+            if (currentCenter && currentZoom !== undefined && currentPitch !== undefined && currentBearing !== undefined) {
+                map.current?.jumpTo({
+                    center: currentCenter,
+                    zoom: currentZoom,
+                    pitch: currentPitch,
+                    bearing: currentBearing
+                });
+            }
             
             // Restore selection after markers are recreated
             if (currentSelection) {
