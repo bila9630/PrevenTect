@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { Droplets, Wind } from 'lucide-react';
 
 interface AnalyticsMapViewProps {
@@ -26,6 +27,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
     const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
     const [riskMode, setRiskMode] = useState<'water' | 'wind'>('water');
     const [markersData, setMarkersData] = useState<Array<{ lat: number; lng: number; address: string; riskData?: any }>>([]);
+    const [waterThreshold, setWaterThreshold] = useState([1]);
+    const [windThreshold, setWindThreshold] = useState([25]);
 
     // Load cached token on component mount
     useEffect(() => {
@@ -205,24 +208,33 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 };
                 
                 let riskValue, minVal, maxVal, fillColor, shadowColor;
+                let isFiltered = false;
                 
                 if (riskMode === 'water') {
                     // Water damage risk (1-6 => green->red)
                     riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
                     minVal = 1;
                     maxVal = 6;
+                    isFiltered = Number(riskValue) < waterThreshold[0];
                 } else {
                     // Wind risk (25-38 => green->red)  
                     riskValue = coord.riskData?.STURM;
                     minVal = 25;
                     maxVal = 38;
+                    isFiltered = Number(riskValue) < windThreshold[0];
                 }
                 
-                const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
-                const t = Number.isNaN(normalizedRisk) ? 0 : (normalizedRisk - minVal) / (maxVal - minVal);
-                const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
-                fillColor = `hsl(${hue}, 80%, 50%)`;
-                shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
+                if (isFiltered) {
+                    // Gray out filtered markers
+                    fillColor = `hsl(0, 0%, 60%)`;
+                    shadowColor = `hsla(0, 0%, 60%, 0.6)`;
+                } else {
+                    const normalizedRisk = Math.max(minVal, Math.min(maxVal, Number(riskValue)));
+                    const t = Number.isNaN(normalizedRisk) ? 0 : (normalizedRisk - minVal) / (maxVal - minVal);
+                    const hue = 120 * (1 - t); // 120deg (green) to 0deg (red)
+                    fillColor = `hsl(${hue}, 80%, 50%)`;
+                    shadowColor = `hsla(${hue}, 80%, 50%, 0.6)`;
+                }
                 
                 // SVG pin in inner wrapper - not root element
                 inner.innerHTML = `
@@ -296,7 +308,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 }, 50);
             }
         }
-    }, [riskMode]);
+    }, [riskMode, waterThreshold, windThreshold]);
 
     // Shrink all markers when selection is cleared
     useEffect(() => {
@@ -692,6 +704,52 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     </div>
                 </div>
             )}
+
+            {/* Filter Controls */}
+            <div className="absolute bottom-20 right-4 z-10">
+                <Card className="bg-background/90 backdrop-blur-sm border-border shadow-lg">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                            {riskMode === 'water' ? '🌊' : '💨'} Risk Filter
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {riskMode === 'water' ? (
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                    <span>0cm</span>
+                                    <span>Threshold: {waterThreshold[0]} (≈{Math.round((waterThreshold[0] - 1) * 40)}cm)</span>
+                                    <span>200cm+</span>
+                                </div>
+                                <Slider
+                                    value={waterThreshold}
+                                    onValueChange={setWaterThreshold}
+                                    min={1}
+                                    max={6}
+                                    step={1}
+                                    className="w-48"
+                                />
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                    <span>0 km/h</span>
+                                    <span>Threshold: {windThreshold[0]} km/h</span>
+                                    <span>50+ km/h</span>
+                                </div>
+                                <Slider
+                                    value={windThreshold}
+                                    onValueChange={setWindThreshold}
+                                    min={25}
+                                    max={38}
+                                    step={1}
+                                    className="w-48"
+                                />
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Risk Mode Toggle Switch */}
             <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3">
