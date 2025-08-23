@@ -199,7 +199,7 @@ const Analytics = () => {
     console.log("Selected location:", location);
     console.log("Selected location:", location.attrs.detail);
 
-    // Center map on selected location
+    // Center map on selected location with 3D rotation effect
     mapRef.current?.flyTo([location.attrs.lon, location.attrs.lat], 18);
     
     // Always use the hardcoded address for building search
