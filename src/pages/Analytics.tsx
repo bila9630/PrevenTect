@@ -188,7 +188,7 @@ const Analytics = () => {
     setShowResults(false);
     
     // Center map on Brückenstrasse 73, 3005 Bern (coordinates: 7.4333, 46.9548)
-    mapRef.current?.flyTo([46.9548, 7.4333], 30);
+    mapRef.current?.flyTo([46.9548, 7.4333], 18);
     
     // Always use the hardcoded address for building search
     searchBuildings("Brückenstrasse 73, 3005 Bern");
