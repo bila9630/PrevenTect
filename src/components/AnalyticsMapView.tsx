@@ -806,13 +806,38 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                         </Button>
                                     );
                                 } else {
-                                    // No selection - gray out button
+                                    // No selection - show count of visible markers
+                                    const visibleMarkersCount = markersData.filter(coord => {
+                                        let riskValue;
+                                        if (riskMode === 'water') {
+                                            riskValue = coord.riskData?.HOCHWASSER_FLIESSGEWAESSER;
+                                            return Number(riskValue) >= waterThreshold[0];
+                                        } else {
+                                            riskValue = coord.riskData?.STURM;
+                                            return Number(riskValue) >= windThreshold[0];
+                                        }
+                                    }).length;
+                                    
+                                    const hasEnoughMarkers = visibleMarkersCount > 0;
+                                    
                                     return (
                                         <Button
-                                            className="w-full py-3 px-4 font-medium bg-gray-400 text-gray-600 cursor-not-allowed"
-                                            disabled={true}
+                                            className={`w-full py-3 px-4 font-medium ${
+                                                hasEnoughMarkers 
+                                                    ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                                    : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                            }`}
+                                            disabled={!hasEnoughMarkers}
+                                            onClick={() => {
+                                                if (hasEnoughMarkers) {
+                                                    console.log(`Sending info to ${visibleMarkersCount} properties`);
+                                                }
+                                            }}
                                         >
-                                            Info an Liegenschaften senden
+                                            {hasEnoughMarkers 
+                                                ? `Info an ${visibleMarkersCount} Liegenschaften senden!`
+                                                : 'Info an Liegenschaften senden'
+                                            }
                                         </Button>
                                     );
                                 }
