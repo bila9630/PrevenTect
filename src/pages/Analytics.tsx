@@ -143,7 +143,9 @@ const Analytics = () => {
             dangerousBuildings.map(async (building: any) => {
               try {
                 const address = building.attributes.ADRESSE;
-                const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${localStorage.getItem('mapbox-token')}`;
+                // Add "Bern" to ensure we get Bern addresses and use proximity to Bern center
+                const searchQuery = `${address}, Bern`;
+                const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${localStorage.getItem('mapbox-token')}&proximity=7.4474,46.9480&bbox=7.3000,46.8000,7.6000,47.1000`;
                 const geocodeResponse = await fetch(geocodeUrl);
                 const geocodeData = await geocodeResponse.json();
 
