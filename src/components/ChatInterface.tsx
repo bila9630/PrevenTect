@@ -304,23 +304,11 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
       isUser: true,
     };
 
-    const followUpText =
-      answer === 'Ja'
-        ? 'Gerne. Wir vermitteln Ihnen qualifizierte Partnerbetriebe und senden Ihnen Details per E-Mail.'
-        : 'Alles klar. Wenn Sie später Unterstützung benötigen, sagen Sie einfach Bescheid.';
-
-    const botReply: Message = {
-      id: (Date.now() + 1).toString(),
-      text: followUpText,
-      timestamp: new Date(),
-      isUser: false,
-    };
-
     if (answer === 'Ja') {
       // show small loader while fetching AI recommendations
       const loaderId = (Date.now() + 2).toString();
       const loader: Message = { id: loaderId, text: '', timestamp: new Date(), isUser: false, isLoadingMessage: true, loadingSteps: ['Empfehlungen zusammenstellen'], currentStep: 0 };
-      setMessages(prev => [...prev, userMessage, botReply, loader]);
+      setMessages(prev => [...prev, userMessage, loader]);
 
       try {
         let aiItems: { title: string; detail: string; tags?: string[] }[] = [];
@@ -354,6 +342,12 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
         setMessages(prev => prev.map(m => (m.id === loaderId ? { ...m, text: 'Empfehlungen konnten nicht geladen werden.' } : m)));
       }
     } else {
+      const botReply: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Alles klar. Wenn Sie später Unterstützung benötigen, sagen Sie einfach Bescheid.',
+        timestamp: new Date(),
+        isUser: false,
+      };
       setMessages(prev => [...prev, userMessage, botReply]);
     }
   };
