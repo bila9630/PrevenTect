@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card } from '@/components/ui/card';
@@ -14,8 +14,6 @@ interface MapViewRef {
   rotateAroundLocation: (coordinates: [number, number]) => void;
   stopRotation: () => void;
   toggleRain: (enabled: boolean) => void;
-  addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => void;
-  clearMarkers: () => void;
 }
 
 const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
@@ -35,7 +33,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
   const [isRainEnabled, setIsRainEnabled] = useState(false);
-  const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
   const [isRotating, setIsRotating] = useState(false);
   const rotationRef = useRef<number | null>(null);
 
@@ -74,18 +71,18 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   };
 
   // Camera rotation function
-  const rotateCamera = (timestamp: number) => {
+  const rotateCamera = useCallback((timestamp: number) => {
     if (!map.current || !isRotating) return;
-    
+
     // Calculate rotation angle (about 10 degrees per second)
     const rotation = (timestamp / 100) % 360;
-    
+
     map.current.rotateTo(rotation, { duration: 0 });
-    
+
     if (isRotating) {
       rotationRef.current = requestAnimationFrame(rotateCamera);
     }
-  };
+  }, [isRotating]);
 
   // Stop rotation function
   const stopCameraRotation = () => {
@@ -102,7 +99,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       if (map.current) {
         // Stop any ongoing rotation
         stopCameraRotation();
-        
+
         map.current.flyTo({
           center: coordinates,
           zoom: zoom,
@@ -112,10 +109,10 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
     },
     rotateAroundLocation: (coordinates: [number, number]) => {
       if (!map.current) return;
-      
+
       // Stop any existing rotation
       stopCameraRotation();
-      
+
       // Set the center and start rotation
       map.current.setCenter(coordinates);
       setIsRotating(true);
@@ -127,98 +124,8 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
     toggleRain: (enabled: boolean) => {
       setIsRainEnabled(enabled);
       toggleRainEffect(enabled);
-    },
-    addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => {
-      if (!map.current) return;
-
-      // Clear existing markers first
-      markers.forEach(marker => marker.remove());
-
-      // Remove existing circle layers and sources
-      if (map.current.getLayer('building-circles')) {
-        map.current.removeLayer('building-circles');
-      }
-      if (map.current.getSource('building-circles')) {
-        map.current.removeSource('building-circles');
-      }
-
-      // Add new markers
-      const newMarkers = coordinates.map(coord => {
-        const el = document.createElement('div');
-        el.className = 'marker';
-        el.style.backgroundColor = '#ef4444';
-        el.style.width = '16px';
-        el.style.height = '16px';
-        el.style.borderRadius = '50%';
-        el.style.border = '3px solid white';
-        el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.4)';
-        el.style.cursor = 'pointer';
-
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([coord.lng, coord.lat])
-          .setPopup(new mapboxgl.Popup().setHTML(`<div style="font-size: 14px; font-weight: 500;">${coord.address}</div>`))
-          .addTo(map.current!);
-
-        return marker;
-      });
-
-      // Add circles around buildings
-      if (coordinates.length > 0) {
-        const circleFeatures = coordinates.map(coord => ({
-          type: 'Feature' as const,
-          geometry: {
-            type: 'Point' as const,
-            coordinates: [coord.lng, coord.lat]
-          },
-          properties: {
-            address: coord.address
-          }
-        }));
-
-        map.current.addSource('building-circles', {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: circleFeatures
-          }
-        });
-
-        map.current.addLayer({
-          id: 'building-circles',
-          type: 'circle',
-          source: 'building-circles',
-          paint: {
-            'circle-radius': {
-              base: 1.75,
-              stops: [
-                [12, 50],
-                [22, 180]
-              ]
-            },
-            'circle-color': '#ef4444',
-            'circle-opacity': 0.2,
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ef4444',
-            'circle-stroke-opacity': 0.6
-          }
-        });
-      }
-
-      setMarkers(newMarkers);
-    },
-    clearMarkers: () => {
-      markers.forEach(marker => marker.remove());
-      setMarkers([]);
-
-      // Remove circle layers and sources
-      if (map.current?.getLayer('building-circles')) {
-        map.current.removeLayer('building-circles');
-      }
-      if (map.current?.getSource('building-circles')) {
-        map.current.removeSource('building-circles');
-      }
     }
-  }), [markers]);
+  }), [rotateCamera]);
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {

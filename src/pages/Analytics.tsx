@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import MapView from '@/components/MapView';
+import AnalyticsMapView from '@/components/AnalyticsMapView';
 import LocationDropdown from '@/components/LocationDropdown';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -26,8 +26,15 @@ interface LocationResult {
   };
 }
 
+interface AnalyticsMapViewRef {
+  flyTo: (coordinates: [number, number], zoom?: number) => void;
+  addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => void;
+  clearMarkers: () => void;
+  focusOnLocation: (coordinates: [number, number]) => void;
+}
+
 const Analytics = () => {
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<AnalyticsMapViewRef>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchValue, setSearchValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -183,7 +190,7 @@ const Analytics = () => {
 
   return (
     <div className="h-full w-full relative">
-      <MapView ref={mapRef} />
+      <AnalyticsMapView ref={mapRef} />
 
       {/* Search Bar */}
       <div className="absolute top-4 left-4 z-10 w-80">
