@@ -22,7 +22,7 @@ const Index = () => {
 
         // Zoom to the location and start rotation after a delay
         mapRef.current.flyTo([lng, lat], 18);
-        
+
         // Start rotation around the building after the flyTo animation completes
         setTimeout(() => {
           mapRef.current.rotateAroundLocation([lng, lat]);
@@ -53,14 +53,14 @@ const Index = () => {
   return (
     <div className="h-full flex">
       {/* Map Section */}
-      <div className="flex-[3] p-4">
+      <div className="flex-1 p-4">
         <div className="h-full bg-background/80 backdrop-blur-sm rounded-lg border border-border shadow-2xl">
           <MapView ref={mapRef} onTokenSet={setMapboxToken} />
         </div>
       </div>
 
       {/* Chat Section */}
-      <div className="flex-[2] p-4 pl-2">
+      <div className="flex-1 p-4">
         <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
           <ChatInterface onLocationRequest={handleLocationRequest} onRainToggle={handleRainToggle} />
         </div>
