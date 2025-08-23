@@ -99,8 +99,8 @@ const Analytics = () => {
     setIsLoading(true);
     try {
       // Hardcoded address for now - can be optimized later with intelligent parser
-      const targetAddress = "Brückenstrasse 73, 3005 Bern";
-      const targetStreet = "Brückenstrasse";
+      const targetAddress = "Felshaldenweg 18, 3004 Bern";
+      const targetStreet = "Felshaldenweg";
       const targetNumber = 73;
       
       // Search for buildings on the specific street, restrict to city Bern
@@ -202,7 +202,7 @@ const Analytics = () => {
     mapRef.current?.flyTo([7.4333, 46.9548], 14);
     
     // Always use the hardcoded address for building search
-    searchBuildings("Brückenstrasse 73, 3005 Bern");
+    searchBuildings("Felshaldenweg 18, 3004 Bern");
   }, []);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
