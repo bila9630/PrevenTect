@@ -378,6 +378,37 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
     // Start upload in background
     uploadImagesAsync();
 
+    // Save claim data to Supabase
+    const saveClaimData = async () => {
+      try {
+        const { error } = await supabase
+          .from('claims')
+          .insert({
+            location_name: selectedLocation,
+            coordinates: null, // Will be populated when we add map coordinates
+            damage_type: selectedDamageType || 'Unbekannt',
+            description: damageDescription,
+            claim_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
+            images_count: uploadedImages.length
+          });
+
+        if (error) throw error;
+        
+        toast({ 
+          description: 'Schadensfall erfolgreich gespeichert' 
+        });
+      } catch (error) {
+        console.error('Save claim error:', error);
+        toast({ 
+          description: 'Speichern des Schadensfalls fehlgeschlagen', 
+          variant: 'destructive' 
+        });
+      }
+    };
+
+    // Save claim data in background
+    saveClaimData();
+
     // Build context for estimation
     const ctx: {
       location?: string;
