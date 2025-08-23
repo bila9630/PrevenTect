@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Slider } from '@/components/ui/slider';
+import { triggerConfettiSideCannons } from '@/lib/confetti';
 
 interface AnalyticsMapViewProps {
     onTokenSet?: (token: string) => void;
@@ -783,6 +784,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                             confirmText="Ja, senden"
                                             cancelText="Abbrechen"
                                             onConfirm={() => {
+                                                triggerConfettiSideCannons();
                                                 console.log(`Sending info to ${selectedBuilding.address}`);
                                             }}
                                         />
@@ -823,6 +825,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                             confirmText="Ja, senden"
                                             cancelText="Abbrechen"
                                             onConfirm={() => {
+                                                triggerConfettiSideCannons();
                                                 console.log(`Sending info to ${visibleMarkersCount} properties`);
                                             }}
                                         />
