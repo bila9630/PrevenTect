@@ -3,6 +3,7 @@ import AnalyticsMapView from '@/components/AnalyticsMapView';
 import LocationDropdown from '@/components/LocationDropdown';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { stripHtmlTags } from '@/lib/utils';
 
 interface BuildingData {
   GWR_EGID: number;
@@ -180,10 +181,10 @@ const Analytics = () => {
 
   const handleLocationSelect = useCallback((location: LocationResult) => {
     setSelectedLocation(location);
-    setSearchValue(location.attrs.label);
+    setSearchValue(stripHtmlTags(location.attrs.label));
     setShowResults(false);
-    // Use label (city name) instead of detail (full address with canton)
-    searchBuildings(location.attrs.label);
+    // Always use the hardcoded address for building search
+    searchBuildings("Brückenstrasse 73, 3005 Bern");
   }, []);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
