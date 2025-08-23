@@ -141,12 +141,13 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
         // Fly to show all markers
         if (coordinates.length > 0) {
             if (coordinates.length === 1) {
-                // Single marker: zoom to it (gentler zoom for better interaction)
+                // Single marker: zoom to it with 3D effect
                 map.current.flyTo({
                     center: [coordinates[0].lng, coordinates[0].lat],
                     zoom: 14,
                     duration: 1200,
-                    pitch: 30
+                    pitch: 60,
+                    bearing: Math.random() * 40 - 20
                 });
             } else {
                 // Multiple markers: fit bounds but cap maximum zoom
@@ -157,7 +158,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 map.current.fitBounds(bounds, {
                     padding: 120,
                     duration: 1200,
-                    maxZoom: 18
+                    maxZoom: 18,
+                    pitch: 60  // Keep 3D view when fitting bounds
                 });
             }
         }
