@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Send, MapPin, KeyRound, CalendarIcon, Upload, X, Loader2 } from 'lucide-react';
+import EstimateResult from './EstimateResult';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
 import { format } from 'date-fns';
@@ -18,6 +19,7 @@ interface Message {
   isLoadingMessage?: boolean;
   loadingSteps?: string[];
   currentStep?: number;
+  isEstimate?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -192,6 +194,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
       text: estimateText,
       timestamp: new Date(),
       isUser: false,
+      isEstimate: true,
     };
 
     const finalMessage: Message = {
@@ -488,6 +491,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                           ))}
                         </ol>
                       </div>
+                    ) : message.isEstimate ? (
+                      <EstimateResult text={message.text} />
                     ) : (
                       <p className="text-sm leading-relaxed">{message.text}</p>
                     )}
