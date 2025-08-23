@@ -100,11 +100,12 @@ const Analytics = () => {
     try {
       // Hardcoded address for now - can be optimized later with intelligent parser
       const targetAddress = "Felshaldenweg 18, 3004 Bern";
-      const targetStreet = "Felshaldenweg";
       const targetNumber = 73;
       
-      // Search for buildings on the specific street, restrict to city Bern
-      const where = `ADRESSE LIKE '%${targetStreet}%' AND ADRESSE LIKE '% Bern%'`;
+      // Search for buildings in nearby areas around Felshaldenweg, including surrounding streets
+      const nearbyStreets = ['Felshaldenweg', 'Kirchenfeldbrücke', 'Thunstrasse', 'Kornhausbrücke', 'Effingerstrasse'];
+      const streetConditions = nearbyStreets.map(street => `ADRESSE LIKE '%${street}%'`).join(' OR ');
+      const where = `(${streetConditions}) AND ADRESSE LIKE '% Bern%'`;
       const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=${encodeURIComponent(where)}&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
       console.log("API::::::", url)
 
@@ -183,7 +184,7 @@ const Analytics = () => {
           toast.info(`No dangerous buildings found near ${targetAddress}`);
         }
       } else {
-        toast.error(`No buildings found on ${targetStreet}`);
+        toast.error('No buildings found in nearby areas');
       }
     } catch (error) {
       console.error('Search error:', error);
