@@ -624,7 +624,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             {/* Risk Information Panel */}
             {selectedBuilding && (
-                <div className="absolute top-4 right-4 w-80 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
+                <div className="absolute top-4 right-4 w-96 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-semibold text-foreground">Risks</h3>
                         <button
@@ -687,8 +687,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             )}
 
             {/* Combined Risk Filter Controls */}
-            <div className="absolute bottom-4 right-4 z-10">
-                <Card className="bg-background/90 backdrop-blur-sm border-border shadow-lg">
+            <div className="absolute bottom-4 right-4 z-10 w-96">
+                <Card className="w-full bg-background/90 backdrop-blur-sm border-border shadow-lg">
                     <CardHeader className="pb-2 pt-3">
                         <CardTitle className="text-base font-semibold text-gray-600">
                             Risiko Filter
@@ -700,8 +700,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             <button
                                 onClick={() => setRiskMode('water')}
                                 className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${riskMode === 'water'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'text-muted-foreground hover:text-foreground'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
                                 <span className="text-xs font-medium">Wasser</span>
@@ -710,8 +710,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             <button
                                 onClick={() => setRiskMode('wind')}
                                 className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${riskMode === 'wind'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'text-muted-foreground hover:text-foreground'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
                                 <span className="text-xs font-medium">Wind</span>
@@ -720,15 +720,15 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
                         {/* Slider with value above and min/max below */}
                         {riskMode === 'water' ? (
-                            <div className="space-y-1 relative">
-                                <div className="relative h-6">
+                            <div className="space-y-1 relative w-full">
+                                <div className="relative h-6 w-full">
                                     <Slider
                                         value={waterThreshold}
                                         onValueChange={setWaterThreshold}
                                         min={1}
                                         max={6}
                                         step={1}
-                                        className="w-48"
+                                        className="w-full"
                                     />
                                     <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 pointer-events-none">
                                         <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
@@ -742,15 +742,15 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-1 relative">
-                                <div className="relative h-6">
+                            <div className="space-y-1 relative w-full">
+                                <div className="relative h-6 w-full">
                                     <Slider
                                         value={windThreshold}
                                         onValueChange={setWindThreshold}
                                         min={25}
                                         max={38}
                                         step={1}
-                                        className="w-48"
+                                        className="w-full"
                                     />
                                     <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 pointer-events-none">
                                         <span className="text-white font-bold text-sm drop-shadow-[0_0_8px_hsl(var(--primary))]">
@@ -798,8 +798,8 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                     return (
                                         <Button
                                             className={`w-full py-3 px-4 font-medium ${hasEnoughMarkers
-                                                    ? 'bg-red-600 hover:bg-red-700 text-white'
-                                                    : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                                ? 'bg-red-600 hover:bg-red-700 text-white'
+                                                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
                                                 }`}
                                             disabled={!hasEnoughMarkers}
                                             onClick={() => {
