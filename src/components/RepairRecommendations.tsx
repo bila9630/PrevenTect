@@ -32,7 +32,7 @@ function buildRecommendations(damageType?: string, description?: string): RecIte
 
     const has = (re: RegExp) => re.test(d);
 
-    const isHail = /hagel/.test(t) || /hagel/.test(d);
+    const isHail = /wasserschaden/.test(t) || /wasserschaden/.test(d);
     const isStorm = /sturm|wind/.test(t) || /sturm|wind/.test(d);
 
     // Windows and glass
@@ -42,7 +42,7 @@ function buildRecommendations(damageType?: string, description?: string): RecIte
                 id: 'win-frame',
                 title: 'Fenster-Holzrahmen',
                 detail:
-                    'Holzrahmen sind bei Hagel anfälliger. Empfehlung: Metallrahmen (Alu/Stahl) oder Holz/Alu-Verbund für höhere Schlagfestigkeit; zusätzlich Kantenschutz/Schlagleisten an Wetterseite.',
+                    'Holzrahmen sind bei Wassereintritt anfälliger. Empfehlung: Metallrahmen (Alu/Stahl) oder Holz/Alu-Verbund; zusätzlich Kantenschutz/Schlagleisten an Wetterseite und bessere Abdichtung.',
                 icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
                 tags: ['Fenster', 'Holzrahmen'],
             });
@@ -51,9 +51,9 @@ function buildRecommendations(damageType?: string, description?: string): RecIte
             id: 'win-glass',
             title: 'Sicherheitsglas und Schutz',
             detail:
-                'Verbundsicherheitsglas (VSG) oder gehärtetes Glas reduziert Bruchrisiken. Außenliegende Rollläden oder Sturmschutz-Lamellen bieten zusätzlichen Schutz bei Hagel und Sturm.',
+                'Verbundsicherheitsglas (VSG) oder gehärtetes Glas reduziert Bruchrisiken. Außenliegende Rollläden oder Sturmschutz-Lamellen bieten zusätzlichen Schutz bei Starkregen und Sturm.',
             icon: <ShieldCheck className="h-4 w-4 text-primary" />,
-            tags: ['Glas', isHail ? 'Hagel' : 'Schlag'],
+            tags: ['Glas', isHail ? 'Wasserschaden' : 'Schlag'],
         });
         recs.push({
             id: 'win-seals',
@@ -69,11 +69,11 @@ function buildRecommendations(damageType?: string, description?: string): RecIte
     if (has(/dach|ziegel|unterdach|trapez/)) {
         recs.push({
             id: 'roof-material',
-            title: 'Hagelresistente Dacheindeckung',
+            title: 'Wasserresistente Dacheindeckung',
             detail:
-                'Setzen Sie auf hagelgeprüfte Materialien (z. B. Hagelwiderstandsklasse 4–5) oder Metall-/Faserzement-Paneele. Sturmklammern erhöhen die Sturmsicherheit von Ziegeln.',
+                'Setzen Sie auf wasser- und sturmresistente Materialien oder Metall-/Faserzement-Paneele. Sturmklammern erhöhen die Sturmsicherheit von Ziegeln.',
             icon: <Home className="h-4 w-4 text-primary" />,
-            tags: ['Dach', 'HW-Klasse 4–5'],
+            tags: ['Dach', 'Wasserresistenz'],
         });
         // Roof-specific: add targeted storm fix as well
         recs.push({
@@ -92,9 +92,9 @@ function buildRecommendations(damageType?: string, description?: string): RecIte
             id: 'facade',
             title: 'Schlagzähe Fassadensysteme',
             detail:
-                'Elastische, hagelresistente Putze oder vorgehängte Fassadenplatten reduzieren Abplatzungen. Prüfen Sie Systeme mit geprüfter Hagelklasse.',
+                'Elastische, wasserresistente Putze oder vorgehängte Fassadenplatten reduzieren Abplatzungen und Feuchteeintrag. Prüfen Sie Systeme mit geprüfter Wasserbeständigkeit.',
             icon: <ShieldCheck className="h-4 w-4 text-primary" />,
-            tags: ['Fassade', 'Hagelschutz'],
+            tags: ['Fassade', 'Wasserschutz'],
         });
         recs.push({
             id: 'facade-joints',
@@ -110,11 +110,11 @@ function buildRecommendations(damageType?: string, description?: string): RecIte
     if (has(/solaranlage|pv|photovoltaik/)) {
         recs.push({
             id: 'pv',
-            title: 'PV-Hagelschutz & Montage',
+            title: 'PV-Schutz & Montage',
             detail:
-                'Module mit hagelresistentem Glas, angepasstem Neigungswinkel und robusten Montagesystemen. Schutznetze können punktuelle Einschläge abschwächen.',
+                'Module mit robustem Glas, angepasstem Neigungswinkel und robusten Montagesystemen. Schutznetze können punktuelle Einschläge abschwächen; Kabel- und Anschlussdosen wasserfest ausführen.',
             icon: <ShieldCheck className="h-4 w-4 text-primary" />,
-            tags: ['PV', 'Hagel'],
+            tags: ['PV', 'Wasserschaden'],
         });
     }
 
@@ -148,7 +148,7 @@ function buildRecommendations(damageType?: string, description?: string): RecIte
             id: 'general',
             title: 'Wetterfeste Materialien wählen',
             detail:
-                'Robuste Materialien und geprüfte Systeme (Hagel- und Sturmklassen) verbessern die Widerstandsfähigkeit Ihres Gebäudes nachhaltig.',
+                'Robuste Materialien und geprüfte Systeme (Wasser- und Sturmwiderstand) verbessern die Widerstandsfähigkeit Ihres Gebäudes nachhaltig.',
             icon: <ShieldCheck className="h-4 w-4 text-primary" />,
             tags: ['Allgemein'],
         });
@@ -197,7 +197,7 @@ export default function RepairRecommendations({ damageType, description, locatio
                         className="gap-2"
                         onClick={() => window.open('https://www.hagelregister.ch/', '_blank', 'noopener,noreferrer')}
                     >
-                        <ExternalLink className="h-4 w-4" /> Mehr zu Hagel- und Sturmklassen
+                        <ExternalLink className="h-4 w-4" /> Mehr zu Wasserschaden- und Sturmklassen
                     </Button>
                 </div>
             </CardContent>

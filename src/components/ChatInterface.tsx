@@ -94,12 +94,6 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
     toast({ description: 'OpenAI API-Schlüssel lokal gespeichert.' });
   };
 
-  const clearApiKey = () => {
-    localStorage.removeItem('openai_api_key');
-    setApiKey('');
-    toast({ description: 'OpenAI API-Schlüssel gelöscht.' });
-  };
-
   // Show a 3-step loader when requesting partner companies and then trigger the route
   const handleRequestPartnersClick = async () => {
     if (!onRequestPartners) return;
@@ -248,7 +242,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
     const localHeuristic = () => {
       let baseMin = 800, baseMax = 5000;
       const t = (selectedDamageType || '').toLowerCase();
-      if (t.includes('hagel')) { baseMin = 1500; baseMax = 12000; }
+      if (t.includes('wasserschaden')) { baseMin = 1500; baseMax = 12000; }
       else if (t.includes('sturm')) { baseMin = 1000; baseMax = 10000; }
       else { baseMin = 500; baseMax = 6000; }
 
@@ -382,8 +376,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
 
     setMessages(prev => [...prev, userMessage]);
 
-    // Activate rain effect for Hagel or Sturmwind
-    if ((damageType === 'Hagel' || damageType === 'Sturmwind') && onRainToggle) {
+    // Activate rain effect for Wasserschaden oder Sturmwind
+    if ((damageType === 'Wasserschaden' || damageType === 'Sturmwind') && onRainToggle) {
       try {
         await onRainToggle(true);
       } catch (error) {
@@ -761,14 +755,14 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
               {!message.isUser && message.id === lastBotMessageId && showDamageOptions && (
                 <div className="mt-3 ml-8 grid grid-cols-3 gap-3 max-w-md">
                   <button
-                    onClick={() => handleDamageOption('Hagel')}
+                    onClick={() => handleDamageOption('Wasserschaden')}
                     className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
                   >
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                         <div className="text-primary text-xl">🌨️</div>
                       </div>
-                      <span className="text-sm font-medium text-foreground">Hagel</span>
+                      <span className="text-sm font-medium text-foreground">Wasserschaden</span>
                     </div>
                   </button>
 

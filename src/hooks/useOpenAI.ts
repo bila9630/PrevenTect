@@ -134,7 +134,7 @@ export const useOpenAI = (apiKey?: string) => {
   const generateRecommendations = async (ctx: RecommendCtx): Promise<RecItem[]> => {
     if (!clientRef.current) throw new Error('OpenAI client not initialized');
 
-    const sys = `Du bist ein Assistent der Gebäudeversicherung Bern (GVB). Formuliere präzise, praxisnahe Empfehlungen für Reparatur & Prävention nach einem Schaden. Antworte auf Deutsch. Fokussiere dich besonders auf Materialwahl, Materialwechsel und schützende Bauteile (z. B. Holz → Stahl/Alu, Holz/Alu-Verbund, laminiertes Sicherheitsglas, Stahlgitter, Schutzleisten, Hagelwiderstandsklassen, Sturmklammern). Vermeide generische Hinweise wie "Dokumentation" oder reine Prozess-Tipps.`;
+    const sys = `Du bist ein Assistent der Gebäudeversicherung Bern (GVB). Formuliere präzise, praxisnahe Empfehlungen für Reparatur & Prävention nach einem Schaden. Antworte auf Deutsch. Fokussiere dich besonders auf Materialwahl, Materialwechsel und schützende Bauteile (z. B. Holz → Stahl/Alu, Holz/Alu-Verbund, laminiertes Sicherheitsglas, Stahlgitter, Schutzleisten, wasserbeständige Systeme, Sturmklammern). Vermeide generische Hinweise wie "Dokumentation" oder reine Prozess-Tipps.`;
 
     const user = [
       `Kontext:`,
