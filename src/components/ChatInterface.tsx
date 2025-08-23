@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Send, MapPin, CalendarIcon, Upload, X, Loader2 } from 'lucide-react';
 import ApiKeySetupCard from './ApiKeySetupCard';
 import EstimateResult from './EstimateResult';
+import DamageSummary from './DamageSummary';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
 import { format } from 'date-fns';
@@ -50,6 +51,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [conversationState, setConversationState] = useState<'initial' | 'damage_selected' | 'description_given' | 'date_needed' | 'date_selected'>('initial');
   const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
+  const [showRepairOptions, setShowRepairOptions] = useState<boolean>(false);
   const { toast } = useToast();
   const { sendWithFunctions, estimateCoverage } = useOpenAI(apiKey);
 
@@ -190,22 +192,33 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     timers.forEach((t) => clearTimeout(t));
     setMessages(prev => prev.filter(m => m.id !== loaderId));
 
-    const estimateMessage: Message = {
+    // Insert a separate bot message that will render the DamageSummary card
+    const summaryMessage: Message = {
       id: (Date.now() + 2).toString(),
+      text: '__SUMMARY__',
+      timestamp: new Date(),
+      isUser: false,
+      isEstimate: false,
+    };
+
+    const estimateMessage: Message = {
+      id: (Date.now() + 3).toString(),
       text: estimateText,
       timestamp: new Date(),
       isUser: false,
       isEstimate: true,
     };
 
-    const finalMessage: Message = {
-      id: (Date.now() + 3).toString(),
-      text: 'Vielen Dank! Ihre Schadensmeldung wurde erfasst. Das System verarbeitet die Angaben, und Sie erhalten weitere Informationen per E-Mail. (Ergebnis ist vorläufig)',
+    const repairAskMessage: Message = {
+      id: (Date.now() + 4).toString(),
+      text: 'Benötigen Sie Unterstützung bei der Reparatur?',
       timestamp: new Date(),
       isUser: false,
     };
 
-    setMessages(prev => [...prev, estimateMessage, finalMessage]);
+    setMessages(prev => [...prev, summaryMessage, estimateMessage, repairAskMessage]);
+    setLastBotMessageId(repairAskMessage.id);
+    setShowRepairOptions(true);
     setConversationState('initial');
   };
 
@@ -276,6 +289,39 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
 
     setMessages(prev => [...prev, botMessage]);
     setConversationState('damage_selected');
+  };
+
+  const handleRepairSupportOption = (answer: 'Ja' | 'Nein', displayText?: string) => {
+    setShowRepairOptions(false);
+
+    // Add user selection message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: displayText || answer,
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    const followUpText =
+      answer === 'Ja'
+        ? 'Gerne. Wir vermitteln Ihnen qualifizierte Partnerbetriebe und senden Ihnen Details per E-Mail.'
+        : 'Alles klar. Wenn Sie später Unterstützung benötigen, sagen Sie einfach Bescheid.';
+
+    const botReply: Message = {
+      id: (Date.now() + 1).toString(),
+      text: followUpText,
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    const finalMessage: Message = {
+      id: (Date.now() + 2).toString(),
+      text: 'Vielen Dank! Weitere Informationen erhalten Sie per E-Mail.',
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, userMessage, botReply, finalMessage]);
   };
 
   const handleSendMessage = async (e: React.FormEvent | null, messageText?: string) => {
@@ -480,6 +526,14 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                       </div>
                     ) : message.isEstimate ? (
                       <EstimateResult text={message.text} />
+                    ) : message.text === '__SUMMARY__' ? (
+                      <DamageSummary
+                        location={selectedLocation || undefined}
+                        damageType={selectedDamageType || undefined}
+                        description={damageDescription || undefined}
+                        dateISO={selectedDate ? selectedDate.toISOString().split('T')[0] : undefined}
+                        imagesCount={uploadedImages.length}
+                      />
                     ) : (
                       <p className="text-sm leading-relaxed">{message.text}</p>
                     )}
@@ -557,6 +611,28 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                       <span className="text-sm font-medium text-foreground">Andere</span>
                     </div>
                   </button>
+                </div>
+              )}
+
+              {/* Repair support options (after estimate) */}
+              {!message.isUser && message.id === lastBotMessageId && showRepairOptions && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRepairSupportOption('Ja', 'Ja, bitte Unterstützung bei der Reparatur 🔧')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Ja, bitte Unterstützung bei der Reparatur 🔧
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRepairSupportOption('Nein', 'Nein, ich brauche keine Hilfe 🙌')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Nein, ich brauche keine Hilfe 🙌
+                  </Button>
                 </div>
               )}
 

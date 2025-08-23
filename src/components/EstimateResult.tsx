@@ -2,13 +2,15 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Banknote, Info } from 'lucide-react';
+import { DamageSummaryProps } from './DamageSummary';
 
 interface EstimateResultProps {
     text: string;
+    summary?: DamageSummaryProps;
 }
 
 // A compact, visually appealing estimation result card
-const EstimateResult: React.FC<EstimateResultProps> = ({ text }) => {
+const EstimateResult: React.FC<EstimateResultProps> = ({ text, summary }) => {
     // Split into soft paragraphs to improve readability
     const parts = text.split(/\n+|(?<=\.)\s{1,}/).filter(Boolean);
 
