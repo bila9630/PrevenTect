@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Send, MapPin, CalendarIcon, Loader2 } from 'lucide-react';
+import { Send, MapPin, CalendarIcon } from 'lucide-react';
+import LoadingMessage from './LoadingMessage';
 import ApiKeySetupCard from './ApiKeySetupCard';
 import EstimateResult from './EstimateResult';
 import DamageSummary from './DamageSummary';
@@ -641,23 +642,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                       }`}
                   >
                     {message.isLoadingMessage ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          <p className="text-sm font-medium">Bitte warten …</p>
-                        </div>
-                        <ol className="text-xs space-y-1">
-                          {(message.loadingSteps || []).map((label, idx) => (
-                            <li key={idx} className={`flex items-center gap-2 ${message.currentStep === idx ? 'text-foreground' : 'text-muted-foreground'}`}>
-                              <span className={`inline-flex h-2 w-2 rounded-full ${message.currentStep === idx ? 'bg-primary' : 'bg-muted-foreground/40'}`}></span>
-                              <span>{label}</span>
-                              {message.currentStep === idx && (
-                                <span className="ml-auto text-[10px] uppercase tracking-wide text-primary">läuft</span>
-                              )}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
+                      <LoadingMessage steps={message.loadingSteps || []} currentStep={message.currentStep} />
                     ) : message.isEstimate ? (
                       <EstimateResult text={message.text} />
                     ) : message.text === '__SUMMARY__' ? (
