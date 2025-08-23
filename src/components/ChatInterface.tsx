@@ -94,6 +94,53 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
     toast({ description: 'OpenAI API-Schlüssel gelöscht.' });
   };
 
+  // Show a 3-step loader when requesting partner companies and then trigger the route
+  const handleRequestPartnersClick = async () => {
+    if (!onRequestPartners) return;
+    const loaderId = (Date.now() + 100).toString();
+    const loadingMsg: Message = {
+      id: loaderId,
+      text: '',
+      timestamp: new Date(),
+      isUser: false,
+      isLoadingMessage: true,
+      loadingSteps: ['Standort prüfen', 'Partnerbetriebe in der Nähe finden', 'Route berechnen'],
+      currentStep: 0,
+    };
+    setMessages(prev => [...prev, loadingMsg]);
+
+    const timers: number[] = [];
+    const advanceStep = (step: number) => {
+      setMessages(prev => prev.map(m => (m.id === loaderId ? { ...m, currentStep: step } : m)));
+    };
+    timers.push(window.setTimeout(() => advanceStep(1), 1500));
+    timers.push(window.setTimeout(() => advanceStep(2), 3000));
+    // Wait for steps to complete (~4.5s) before drawing the route
+    await new Promise((res) => setTimeout(res, 4500));
+
+    timers.forEach((t) => clearTimeout(t));
+    setMessages(prev => prev.filter(m => m.id !== loaderId));
+
+    try {
+      await onRequestPartners();
+      const doneMessage: Message = {
+        id: (Date.now() + 102).toString(),
+        text: '🧭 Ich habe eine Route zu einem Partnerbetrieb auf der Karte angezeigt.',
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, doneMessage]);
+    } catch {
+      const errorMessage: Message = {
+        id: (Date.now() + 101).toString(),
+        text: '❌ Route konnte nicht berechnet werden. Bitte später erneut versuchen.',
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+  };
+
   // Produce a preliminary insurance estimate and finalize the flow
   const produceEstimateAndFinalize = async () => {
     // Show loader with 3 steps (1.5s each)
@@ -571,7 +618,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                         description={damageDescription || undefined}
                         location={selectedLocation || undefined}
                         aiItems={aiRecItems}
-                        onRequestPartners={onRequestPartners}
+                        onRequestPartners={handleRequestPartnersClick}
                       />
                     ) : (
                       <p className="text-sm leading-relaxed">{message.text}</p>

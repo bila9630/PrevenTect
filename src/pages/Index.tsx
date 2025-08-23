@@ -78,8 +78,8 @@ const Index = () => {
     const center: [number, number] | null = ref.getCenter?.() || null;
     if (!center) return;
 
-  // Pick random destination within 3km
-  const dest = randomDestinationWithinRadius(center, 3000);
+    // Pick random destination within 3km
+    const dest = randomDestinationWithinRadius(center, 3000);
 
     try {
       // Use Mapbox Directions API (driving profile)
