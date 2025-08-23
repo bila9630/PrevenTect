@@ -223,13 +223,14 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
             // Set the Mapbox access token
             mapboxgl.accessToken = mapboxToken;
 
-            // Initialize map optimized for analytics view
+            // Initialize map optimized for analytics view with globe
             map.current = new mapboxgl.Map({
                 container: mapContainer.current,
                 style: 'mapbox://styles/mapbox/dark-v11', // Better for analytics
-                zoom: 14,
-                center: [7.4474, 46.9480], // Centered on Bern, Switzerland
-                pitch: 30,
+                projection: 'globe' as any,
+                zoom: 2,
+                center: [0, 20],
+                pitch: 45,
                 bearing: 0
             });
 
@@ -263,8 +264,15 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                 })
             );
 
-            // Add 3D buildings for better visualization
+            // Add atmosphere, fog effects, and 3D buildings
             map.current.on('style.load', () => {
+                // Add atmosphere and fog effects
+                map.current?.setFog({
+                    color: 'rgb(255, 255, 255)',
+                    'high-color': 'rgb(245, 245, 255)',
+                    'horizon-blend': 0.3,
+                });
+
                 // Add 3D building extrusion layer
                 const layers = map.current?.getStyle().layers;
                 const labelLayerId = layers?.find(
@@ -315,6 +323,50 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     labelLayerId
                 );
             });
+
+            // Globe rotation animation for analytics
+            const secondsPerRevolution = 300;
+            const maxSpinZoom = 5;
+            const slowSpinZoom = 3;
+            let userInteracting = false;
+            const spinEnabled = true;
+
+            function spinGlobe() {
+                if (!map.current) return;
+
+                const zoom = map.current.getZoom();
+                if (spinEnabled && !userInteracting && zoom < maxSpinZoom) {
+                    let distancePerSecond = 360 / secondsPerRevolution;
+                    if (zoom > slowSpinZoom) {
+                        const zoomDif = (maxSpinZoom - zoom) / (maxSpinZoom - slowSpinZoom);
+                        distancePerSecond *= zoomDif;
+                    }
+                    const center = map.current.getCenter();
+                    center.lng -= distancePerSecond;
+                    map.current.easeTo({ center, duration: 1000, easing: (n) => n });
+                }
+            }
+
+            // Interaction event listeners
+            const onInteractionStart = () => {
+                userInteracting = true;
+            };
+
+            const onInteractionEnd = () => {
+                userInteracting = false;
+                spinGlobe();
+            };
+
+            map.current.on('mousedown', onInteractionStart);
+            map.current.on('dragstart', onInteractionStart);
+            map.current.on('mouseup', onInteractionEnd);
+            map.current.on('touchend', onInteractionEnd);
+            map.current.on('moveend', () => {
+                spinGlobe();
+            });
+
+            // Start the globe spinning
+            spinGlobe();
 
             // Notify parent that token is set
             if (onTokenSet) {
