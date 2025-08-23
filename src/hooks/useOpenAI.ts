@@ -121,7 +121,58 @@ export const useOpenAI = (apiKey?: string) => {
     return response.choices[0].message.content?.trim() || 'Vorläufige Schätzung derzeit nicht verfügbar.';
   };
 
-  return { sendWithFunctions, estimateCoverage };
+  type RecommendCtx = {
+    location?: string;
+    damageType?: string;
+    description?: string;
+    dateISO?: string;
+    imagesCount?: number;
+  };
+
+  type RecItem = { title: string; detail: string; tags?: string[] };
+
+  const generateRecommendations = async (ctx: RecommendCtx): Promise<RecItem[]> => {
+    if (!clientRef.current) throw new Error('OpenAI client not initialized');
+
+    const sys = `Du bist ein Assistent der Gebäudeversicherung Bern (GVB). Formuliere präzise, praxisnahe Empfehlungen für Reparatur & Prävention nach einem Schaden. Antworte auf Deutsch.`;
+
+    const user = [
+      `Kontext:`,
+      `- Ort: ${ctx.location || 'unbekannt'}`,
+      `- Schadenart: ${ctx.damageType || 'unbekannt'}`,
+      `- Beschreibung: ${ctx.description || 'unbekannt'}`,
+      `- Datum: ${ctx.dateISO || 'unbekannt'}`,
+      `- Anzahl Bilder: ${ctx.imagesCount ?? 0}`,
+      '',
+      'Aufgabe: Gib 3–6 konkrete Empfehlungen als JSON-Array zurück. Jedes Element hat: {"title": string, "detail": string, "tags": string[]}.',
+      'Richte die Empfehlungen klar auf den Kontext aus (z. B. Fenster, Holzrahmen, Dach, Fassade, Wasser).',
+      'Gib NUR valides JSON zurück – ohne Fließtext, ohne Markdown.'
+    ].join('\n');
+
+    const response = await clientRef.current.chat.completions.create({
+      model: 'gpt-4.1',
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.2,
+    });
+
+    const raw = response.choices[0].message.content?.trim() || '[]';
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((x) => x && typeof x.title === 'string' && typeof x.detail === 'string')
+          .map((x) => ({ title: x.title, detail: x.detail, tags: Array.isArray(x.tags) ? x.tags.slice(0, 5) : [] }));
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  };
+
+  return { sendWithFunctions, estimateCoverage, generateRecommendations };
 };
 
 export default useOpenAI;

@@ -8,6 +8,7 @@ import { Send, MapPin, CalendarIcon, Upload, X, Loader2 } from 'lucide-react';
 import ApiKeySetupCard from './ApiKeySetupCard';
 import EstimateResult from './EstimateResult';
 import DamageSummary from './DamageSummary';
+import RepairRecommendations from './RepairRecommendations';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
 import { format } from 'date-fns';
@@ -53,12 +54,13 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
   const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
   const [showRepairOptions, setShowRepairOptions] = useState<boolean>(false);
   const { toast } = useToast();
-  const { sendWithFunctions, estimateCoverage } = useOpenAI(apiKey);
+  const { sendWithFunctions, estimateCoverage, generateRecommendations } = useOpenAI(apiKey);
 
   // Claim context we gather across the flow
   const [selectedDamageType, setSelectedDamageType] = useState<string | null>(null);
   const [damageDescription, setDamageDescription] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [aiRecItems, setAIRecItems] = useState<Array<{ title: string; detail: string; tags?: string[] }>>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -291,7 +293,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     setConversationState('damage_selected');
   };
 
-  const handleRepairSupportOption = (answer: 'Ja' | 'Nein', displayText?: string) => {
+  const handleRepairSupportOption = async (answer: 'Ja' | 'Nein', displayText?: string) => {
     setShowRepairOptions(false);
 
     // Add user selection message
@@ -314,14 +316,46 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
       isUser: false,
     };
 
-    const finalMessage: Message = {
-      id: (Date.now() + 2).toString(),
-      text: 'Vielen Dank! Weitere Informationen erhalten Sie per E-Mail.',
-      timestamp: new Date(),
-      isUser: false,
-    };
+    if (answer === 'Ja') {
+      // show small loader while fetching AI recommendations
+      const loaderId = (Date.now() + 2).toString();
+      const loader: Message = { id: loaderId, text: '', timestamp: new Date(), isUser: false, isLoadingMessage: true, loadingSteps: ['Empfehlungen zusammenstellen'], currentStep: 0 };
+      setMessages(prev => [...prev, userMessage, botReply, loader]);
 
-    setMessages(prev => [...prev, userMessage, botReply, finalMessage]);
+      try {
+        let aiItems: { title: string; detail: string; tags?: string[] }[] = [];
+        if (apiKey && generateRecommendations) {
+          aiItems = await generateRecommendations({
+            location: selectedLocation || undefined,
+            damageType: selectedDamageType || undefined,
+            description: damageDescription || undefined,
+            dateISO: selectedDate ? selectedDate.toISOString().split('T')[0] : undefined,
+            imagesCount: uploadedImages.length,
+          });
+        }
+
+        // remove loader
+        setMessages(prev => prev.filter(m => m.id !== loaderId));
+
+        const recMarker: Message = {
+          id: (Date.now() + 3).toString(),
+          text: '__RECOMMENDATIONS__',
+          timestamp: new Date(),
+          isUser: false,
+        };
+
+        // attach AI items in a closure by temporarily placing on window to pass to child via state variable
+        // Simpler: store in a ref-like state at component level
+        setAIRecItems(aiItems);
+
+        setMessages(prev => [...prev, recMarker]);
+        setLastBotMessageId(recMarker.id);
+      } catch (e) {
+        setMessages(prev => prev.map(m => (m.id === loaderId ? { ...m, text: 'Empfehlungen konnten nicht geladen werden.' } : m)));
+      }
+    } else {
+      setMessages(prev => [...prev, userMessage, botReply]);
+    }
   };
 
   const handleSendMessage = async (e: React.FormEvent | null, messageText?: string) => {
@@ -501,9 +535,11 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                     </div>
                   )}
                   <div
-                    className={`rounded-lg p-3 ${message.isUser
+                    className={`rounded-lg ${message.text === '__RECOMMENDATIONS__' ? 'p-0' : 'p-3'} ${message.isUser
                       ? 'bg-primary text-primary-foreground ml-8'
-                      : 'bg-message-bubble text-message-text'
+                      : message.text === '__RECOMMENDATIONS__'
+                        ? 'bg-transparent text-foreground'
+                        : 'bg-message-bubble text-message-text'
                       }`}
                   >
                     {message.isLoadingMessage ? (
@@ -533,6 +569,13 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
                         description={damageDescription || undefined}
                         dateISO={selectedDate ? selectedDate.toISOString().split('T')[0] : undefined}
                         imagesCount={uploadedImages.length}
+                      />
+                    ) : message.text === '__RECOMMENDATIONS__' ? (
+                      <RepairRecommendations
+                        damageType={selectedDamageType || undefined}
+                        description={damageDescription || undefined}
+                        location={selectedLocation || undefined}
+                        aiItems={aiRecItems}
                       />
                     ) : (
                       <p className="text-sm leading-relaxed">{message.text}</p>

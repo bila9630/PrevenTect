@@ -3,7 +3,7 @@ import { MapPin, Calendar as CalendarIcon, Image as ImageIcon, FileText, CloudLi
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { format, parseISO, differenceInCalendarDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 export interface DamageSummaryProps {
     location?: string;
@@ -89,8 +89,7 @@ const DamageSummary: React.FC<DamageSummaryProps> = ({ location, damageType, des
         // Urgency based on risk and recency
         let urgency: 'niedrig' | 'normal' | 'hoch' = 'normal';
         if (risk !== 'Geringe Folgerisiken' || severity === 'schwer') urgency = 'hoch';
-        const daysSince = dateISO ? Math.abs(differenceInCalendarDays(new Date(), parseISO(dateISO))) : undefined;
-        if (typeof daysSince === 'number' && daysSince > 30 && urgency === 'hoch') urgency = 'normal';
+        // removed date-diff based urgency relaxation
 
         // Confidence from images and description richness
         let confidence = 55;
@@ -107,7 +106,6 @@ const DamageSummary: React.FC<DamageSummaryProps> = ({ location, damageType, des
         else if (isModerate) reasons.push('Formulierungen wie "beschädigt/undicht" deuten auf mittleren Schaden.');
         else if (isMinor) reasons.push('Begriffe wie "klein/oberflächlich" deuten auf geringeren Schaden.');
         if ((imagesCount || 0) > 0) reasons.push(`${imagesCount} Bild(er) erhöhen die Einschätzungssicherheit.`);
-        if (typeof daysSince === 'number') reasons.push(`Datum: vor ${daysSince} Tag(en) gemeldet.`);
 
         // Natural sentence for action
         let actionSentence = '';
@@ -193,12 +191,15 @@ const DamageSummary: React.FC<DamageSummaryProps> = ({ location, damageType, des
                         <LabelRow icon={<Clock className="h-4 w-4" />} label="Dringlichkeit">
                             {derived.urgency === 'hoch' ? 'hoch' : derived.urgency}
                         </LabelRow>
-                        <LabelRow icon={<Wrench className="h-4 w-4" />} label="Empfehlung" className="md:col-span-2">
-                            {derived.action}
-                        </LabelRow>
-                        <LabelRow icon={<AlertTriangle className="h-4 w-4" />} label="Hauptrisiko">
-                            {derived.risk}
-                        </LabelRow>
+                        {/* Make Empfehlung and Hauptrisiko equal width by placing them in a two-column sub-grid */}
+                        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <LabelRow icon={<Wrench className="h-4 w-4" />} label="Empfehlung">
+                                {derived.action}
+                            </LabelRow>
+                            <LabelRow icon={<AlertTriangle className="h-4 w-4" />} label="Hauptrisiko">
+                                {derived.risk}
+                            </LabelRow>
+                        </div>
                     </div>
 
                     <div className="mt-1">
