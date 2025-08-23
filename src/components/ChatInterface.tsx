@@ -4,15 +4,18 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Send, MapPin, CalendarIcon, Upload, X, Loader2 } from 'lucide-react';
+import { Send, MapPin, CalendarIcon } from 'lucide-react';
+import LoadingMessage from './LoadingMessage';
 import ApiKeySetupCard from './ApiKeySetupCard';
 import EstimateResult from './EstimateResult';
 import DamageSummary from './DamageSummary';
 import RepairRecommendations from './RepairRecommendations';
+import ImageUpload from './ImageUpload';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   id: string;
@@ -29,9 +32,11 @@ interface ChatInterfaceProps {
   onLocationRequest?: (address: string) => Promise<{ success: boolean; location?: string; coordinates?: number[]; error?: string }>;
   onRainToggle?: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
   onRequestPartners?: () => void;
+  onOrbitBuilding?: () => void;
+  onSnowToggle?: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
 }
 
-const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: ChatInterfaceProps) => {
+const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onOrbitBuilding, onSnowToggle }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -54,6 +59,13 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
   const [conversationState, setConversationState] = useState<'initial' | 'damage_selected' | 'description_given' | 'date_needed' | 'date_selected'>('initial');
   const [lastBotMessageId, setLastBotMessageId] = useState<string>('');
   const [showRepairOptions, setShowRepairOptions] = useState<boolean>(false);
+  // Show a contextual "Danke" button after partner route is displayed
+  const [showThanksOption, setShowThanksOption] = useState<boolean>(false);
+  const [thanksMessageId, setThanksMessageId] = useState<string>('');
+  // Show simulation options after the follow-up question
+  const [showSimulationOptions, setShowSimulationOptions] = useState<boolean>(false);
+  const [showSnowOptions, setShowSnowOptions] = useState<boolean>(false);
+  const [showStormMitigationOptions, setShowStormMitigationOptions] = useState<boolean>(false);
   const { toast } = useToast();
   const { sendWithFunctions, estimateCoverage, generateRecommendations } = useOpenAI(apiKey);
 
@@ -61,7 +73,22 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
   const [selectedDamageType, setSelectedDamageType] = useState<string | null>(null);
   const [damageDescription, setDamageDescription] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<number[] | null>(null);
   const [aiRecItems, setAIRecItems] = useState<Array<{ title: string; detail: string; tags?: string[] }>>([]);
+
+  // Helper to extract a city/region label from a selected location string
+  const extractCity = (location?: string | null): string | null => {
+    if (!location) return null;
+    const parts = location.split(',').map(p => p.trim()).filter(Boolean);
+    const candidates = parts.filter(p => /[A-Za-zÄÖÜäöüß]/.test(p));
+    if (candidates.length === 0) return null;
+    let cand = candidates[candidates.length - 1];
+    if (/schweiz|switzerland|deutschland|germany|österreich|austria/i.test(cand) && candidates.length >= 2) {
+      cand = candidates[candidates.length - 2];
+    }
+    cand = cand.replace(/\b\d{4,5}\b/g, '').trim();
+    return cand || null;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -88,10 +115,214 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
     toast({ description: 'OpenAI API-Schlüssel lokal gespeichert.' });
   };
 
-  const clearApiKey = () => {
-    localStorage.removeItem('openai_api_key');
-    setApiKey('');
-    toast({ description: 'OpenAI API-Schlüssel gelöscht.' });
+  // Show a 3-step loader when requesting partner companies and then trigger the route
+  const handleRequestPartnersClick = async () => {
+    if (!onRequestPartners) return;
+    const loaderId = (Date.now() + 100).toString();
+    const loadingMsg: Message = {
+      id: loaderId,
+      text: '',
+      timestamp: new Date(),
+      isUser: false,
+      isLoadingMessage: true,
+      loadingSteps: ['Standort prüfen', 'Partnerbetriebe in der Nähe finden', 'Route berechnen'],
+      currentStep: 0,
+    };
+    setMessages(prev => [...prev, loadingMsg]);
+
+    const timers: number[] = [];
+    const advanceStep = (step: number) => {
+      setMessages(prev => prev.map(m => (m.id === loaderId ? { ...m, currentStep: step } : m)));
+    };
+    timers.push(window.setTimeout(() => advanceStep(1), 1500));
+    timers.push(window.setTimeout(() => advanceStep(2), 3000));
+    // Wait for steps to complete (~4.5s) before drawing the route
+    await new Promise((res) => setTimeout(res, 4500));
+
+    timers.forEach((t) => clearTimeout(t));
+    setMessages(prev => prev.filter(m => m.id !== loaderId));
+
+    try {
+      await onRequestPartners();
+      const doneMessage: Message = {
+        id: (Date.now() + 102).toString(),
+        text: 'Ich habe eine Route zu einem Partnerbetrieb auf der Karte angezeigt.',
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, doneMessage]);
+      // Enable contextual Danke button under this message
+      setThanksMessageId(doneMessage.id);
+      setShowThanksOption(true);
+    } catch {
+      const errorMessage: Message = {
+        id: (Date.now() + 101).toString(),
+        text: '❌ Route konnte nicht berechnet werden. Bitte später erneut versuchen.',
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+  };
+
+  // Handle click on the contextual "Danke" button shown after partner route is displayed
+  const handleThanksClick = () => {
+    setShowThanksOption(false);
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: 'Danke',
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    const botFollowUp: Message = {
+      id: (Date.now() + 1).toString(),
+      text: 'Gern geschehen! Möchten Sie eine kurze Simulation spielen, um Maßnahmen gegen zukünftige Schäden kennenzulernen?',
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, userMessage, botFollowUp]);
+    setLastBotMessageId(botFollowUp.id);
+    setShowSimulationOptions(true);
+  };
+
+  const handleSimulationOption = (choice: 'yes' | 'no') => {
+    setShowSimulationOptions(false);
+
+    const userSelection: Message = {
+      id: Date.now().toString(),
+      text: choice === 'yes' ? 'Ja, sehr gerne! 😊' : 'Nee, kein Bock',
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    if (choice === 'yes') {
+      // Notify parent to return camera to the building and start orbit
+      try {
+        onOrbitBuilding?.();
+      } catch (e) {
+        // no-op
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('onOrbitBuilding callback failed', e);
+        }
+      }
+      // Enable snow effect for the simulation
+      if (onSnowToggle) {
+        onSnowToggle(true).catch(() => { });
+      }
+      const city = extractCity(selectedLocation) || 'Ihrer Region';
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `Basierend auf den Daten für ${city} fällt regelmäßig viel Schnee und es kam in der Vergangenheit zu Schneestürmen. Welche Maßnahme würden Sie ergreifen, um Ihr Gebäude zu schützen?`,
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, userSelection, botMsg]);
+      setLastBotMessageId(botMsg.id);
+      // Show three selectable options related to snow storm
+      setShowDamageOptions(false);
+      setShowRepairOptions(false);
+      setShowDatePicker(false);
+      setShowImageUpload(false);
+      setShowSnowOptions(true);
+    } else {
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Alles klar! Wenn Sie später Lust haben, können wir jederzeit eine Simulation starten.',
+        timestamp: new Date(),
+        isUser: false,
+      };
+      setMessages(prev => [...prev, userSelection, botMsg]);
+    }
+  };
+
+  const handleSnowOption = (choice: 'clear_roof' | 'install_guards' | 'do_nothing') => {
+    setShowSnowOptions(false);
+
+    const optionText =
+      choice === 'clear_roof'
+        ? 'Schnee rechtzeitig vom Dach entfernen 🧹'
+        : choice === 'install_guards'
+          ? 'Schneefanggitter installieren 🛡️'
+          : 'Nichts unternehmen 😬';
+
+    const userSelection: Message = {
+      id: Date.now().toString(),
+      text: optionText,
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      text:
+        choice === 'do_nothing'
+          ? 'Verstanden. Bitte beachten Sie: Zu hohe Schneelast und Eiszapfen können gefährlich werden. Tipp: Schneelast beobachten und Gefahrenstellen sichern.'
+          : 'Gute Wahl! Das reduziert Schäden durch Dachlast und herabfallenden Schnee. So beugen Sie Risiken effektiv vor.',
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    // End snow effect before starting the next simulation, if available
+    try { onSnowToggle?.(false); } catch { /* noop */ }
+
+    // Follow-up: Start second simulation focused on storm mitigation options
+    const city = extractCity(selectedLocation) || 'Ihrer Region';
+    const stormAsk: Message = {
+      id: (Date.now() + 2).toString(),
+      text: `Auf Basis der Sturmereignisse in ${city} (böige Winde in der Vergangenheit): Welche bauliche Maßnahme priorisieren Sie, um Sturmschäden am Gebäude am effektivsten zu reduzieren? Wählen Sie eine Option.`,
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, userSelection, botMsg, stormAsk]);
+    setLastBotMessageId(stormAsk.id);
+    setShowStormMitigationOptions(true);
+  };
+
+  const handleStormMitigationOption = (
+    choice: 'reinforce_roof' | 'upgrade_openings' | 'secure_facade'
+  ) => {
+    setShowStormMitigationOptions(false);
+
+    const optionMap: Record<string, { label: string; followup: string }> = {
+      reinforce_roof: {
+        label: 'Dachdeckung mit Sturmklammern nachrüsten',
+        followup:
+          'Erhöht die Widerstandsklasse der Deckung und reduziert Abdeckungen bei Böen.',
+      },
+      upgrade_openings: {
+        label: 'Fenster: VSG + geprüfte Läden',
+        followup:
+          'Reduziert Glasbruch und Einwirkungen durch Flugkörper an Öffnungen.',
+      },
+      secure_facade: {
+        label: 'Attika/Fassadenpaneele zusätzlich verankern',
+        followup:
+          'Mindert Abhebe-/Ausrissrisiken an exponierten Bauteilen.',
+      },
+    };
+
+    const sel = optionMap[choice];
+
+    const userSelection: Message = {
+      id: Date.now().toString(),
+      text: sel.label,
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      text: sel.followup,
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, userSelection, botMsg]);
+    setLastBotMessageId(botMsg.id);
   };
 
   // Produce a preliminary insurance estimate and finalize the flow
@@ -117,6 +348,74 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
     timers.push(window.setTimeout(() => advanceStep(2), 3000));
     const start = performance.now();
 
+    // Generate unique claim ID for linking images and data
+    const claimId = `claim-${Date.now()}`;
+
+    // Start background image upload to Supabase without blocking UI
+    const uploadImagesAsync = async (): Promise<string[]> => {
+      if (uploadedImages.length === 0) return [];
+      
+      try {
+        const uploadPromises = uploadedImages.map(async (file, index) => {
+          const fileName = `${claimId}-${index}-${file.name}`;
+          const { error } = await supabase.storage
+            .from('claims-uploads')
+            .upload(fileName, file);
+          
+          if (error) throw error;
+          return fileName;
+        });
+
+        const uploadedFilePaths = await Promise.all(uploadPromises);
+        toast({ 
+          description: `${uploadedImages.length} Bild(er) erfolgreich hochgeladen` 
+        });
+        return uploadedFilePaths;
+      } catch (error) {
+        console.error('Upload error:', error);
+        toast({ 
+          description: 'Bilder-Upload fehlgeschlagen', 
+          variant: 'destructive' 
+        });
+        return [];
+      }
+    };
+
+    // Save claim data to Supabase with linked images
+    const saveClaimWithImages = async () => {
+      try {
+        // Upload images first and get their paths
+        const imagePaths = await uploadImagesAsync();
+        
+        const { error } = await supabase
+          .from('claims')
+          .insert({
+            location_name: selectedLocation,
+            coordinates: selectedCoordinates,
+            damage_type: selectedDamageType || 'Unbekannt',
+            description: damageDescription,
+            claim_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
+            images_count: uploadedImages.length,
+            image_paths: imagePaths
+          });
+
+        if (error) throw error;
+        
+        toast({ 
+          description: 'Schadensfall mit Bildern erfolgreich gespeichert' 
+        });
+      } catch (error) {
+        console.error('Save claim error:', error);
+        toast({ 
+          description: 'Speichern des Schadensfalls fehlgeschlagen', 
+          variant: 'destructive' 
+        });
+      }
+    };
+
+    // Save claim data with linked images in background
+    saveClaimWithImages();
+
     // Build context for estimation
     const ctx: {
       location?: string;
@@ -139,7 +438,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
     const localHeuristic = () => {
       let baseMin = 800, baseMax = 5000;
       const t = (selectedDamageType || '').toLowerCase();
-      if (t.includes('hagel')) { baseMin = 1500; baseMax = 12000; }
+      if (t.includes('wasserschaden')) { baseMin = 1500; baseMax = 12000; }
       else if (t.includes('sturm')) { baseMin = 1000; baseMax = 10000; }
       else { baseMin = 500; baseMax = 6000; }
 
@@ -273,8 +572,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
 
     setMessages(prev => [...prev, userMessage]);
 
-    // Activate rain effect for Hagel or Sturmwind
-    if ((damageType === 'Hagel' || damageType === 'Sturmwind') && onRainToggle) {
+    // Activate rain effect for Wasserschaden oder Sturmwind
+    if ((damageType === 'Wasserschaden' || damageType === 'Sturmwind') && onRainToggle) {
       try {
         await onRainToggle(true);
       } catch (error) {
@@ -421,6 +720,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
             setMessages(prev => [...prev, locationMessage]);
             if (loc.success) {
               setSelectedLocation(loc.location || address);
+              setSelectedCoordinates(loc.coordinates || null);
               setShowDamageOptions(true);
               setLastBotMessageId(locationMessage.id);
             }
@@ -538,23 +838,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                       }`}
                   >
                     {message.isLoadingMessage ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          <p className="text-sm font-medium">Bitte warten …</p>
-                        </div>
-                        <ol className="text-xs space-y-1">
-                          {(message.loadingSteps || []).map((label, idx) => (
-                            <li key={idx} className={`flex items-center gap-2 ${message.currentStep === idx ? 'text-foreground' : 'text-muted-foreground'}`}>
-                              <span className={`inline-flex h-2 w-2 rounded-full ${message.currentStep === idx ? 'bg-primary' : 'bg-muted-foreground/40'}`}></span>
-                              <span>{label}</span>
-                              {message.currentStep === idx && (
-                                <span className="ml-auto text-[10px] uppercase tracking-wide text-primary">läuft</span>
-                              )}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
+                      <LoadingMessage steps={message.loadingSteps || []} currentStep={message.currentStep} />
                     ) : message.isEstimate ? (
                       <EstimateResult text={message.text} />
                     ) : message.text === '__SUMMARY__' ? (
@@ -571,7 +855,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                         description={damageDescription || undefined}
                         location={selectedLocation || undefined}
                         aiItems={aiRecItems}
-                        onRequestPartners={onRequestPartners}
+                        onRequestPartners={handleRequestPartnersClick}
                       />
                     ) : (
                       <p className="text-sm leading-relaxed">{message.text}</p>
@@ -612,18 +896,79 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
                 </div>
               )}
 
+              {/* Danke button after partner route confirmation */}
+              {!message.isUser && message.id === thanksMessageId && showThanksOption && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleThanksClick}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Danke
+                  </Button>
+                </div>
+              )}
+
+              {/* Simulation options after follow-up (agree/decline) */}
+              {!message.isUser && message.id === lastBotMessageId && showSimulationOptions && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleSimulationOption('yes')} className="text-left justify-start text-sm w-fit">Ja, sehr gerne! 😊</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSimulationOption('no')} className="text-left justify-start text-sm w-fit">Nee, kein Bock</Button>
+                </div>
+              )}
+
+              {/* Snow storm scenario options */}
+              {!message.isUser && message.id === lastBotMessageId && showSnowOptions && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleSnowOption('clear_roof')} className="text-left justify-start text-sm w-fit">Schnee rechtzeitig vom Dach entfernen 🧹</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSnowOption('install_guards')} className="text-left justify-start text-sm w-fit">Schneefanggitter installieren 🛡️</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSnowOption('do_nothing')} className="text-left justify-start text-sm w-fit">Nichts unternehmen 😬</Button>
+                </div>
+              )}
+
+              {/* Storm mitigation options (second simulation) */}
+              {!message.isUser && message.id === lastBotMessageId && showStormMitigationOptions && (
+                <div className="mt-3 ml-8 flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStormMitigationOption('reinforce_roof')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Dachdeckung mit Sturmklammern nachrüsten
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStormMitigationOption('upgrade_openings')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Fenster: VSG + geprüfte Läden
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStormMitigationOption('secure_facade')}
+                    className="text-left justify-start text-sm w-fit"
+                  >
+                    Attika/Fassadenpaneele zusätzlich verankern
+                  </Button>
+                </div>
+              )}
+
               {/* Damage cause options */}
               {!message.isUser && message.id === lastBotMessageId && showDamageOptions && (
                 <div className="mt-3 ml-8 grid grid-cols-3 gap-3 max-w-md">
                   <button
-                    onClick={() => handleDamageOption('Hagel')}
+                    onClick={() => handleDamageOption('Wasserschaden')}
                     className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
                   >
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                         <div className="text-primary text-xl">🌨️</div>
                       </div>
-                      <span className="text-sm font-medium text-foreground">Hagel</span>
+                      <span className="text-sm font-medium text-foreground">Wasserschaden</span>
                     </div>
                   </button>
 
@@ -733,126 +1078,33 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners }: C
 
               {/* Image Upload */}
               {!message.isUser && message.id === lastBotMessageId && showImageUpload && (
-                <div className="mt-3 ml-8">
-                  <div className="max-w-md">
-                    <div
-                      className="relative border-2 border-dashed border-border rounded-lg p-6 bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer"
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.add('border-primary', 'bg-primary/10');
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.remove('border-primary', 'bg-primary/10');
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.remove('border-primary', 'bg-primary/10');
-                        const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
-                        if (files.length > 0) {
-                          setUploadedImages(prev => [...prev, ...files]);
-                          toast({ description: `${files.length} Bild(er) hochgeladen` });
-                        }
-                      }}
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.multiple = true;
-                        input.onchange = (e) => {
-                          const files = Array.from((e.target as HTMLInputElement).files || []);
-                          if (files.length > 0) {
-                            setUploadedImages(prev => [...prev, ...files]);
-                            toast({ description: `${files.length} Bild(er) hochgeladen` });
-                          }
-                        };
-                        input.click();
-                      }}
-                    >
-                      <div className="flex flex-col items-center gap-3 text-center">
-                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                          <Upload className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Bilder hochladen</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Bilder hier ablegen oder klicken zum Auswählen
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {uploadedImages.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-xs text-muted-foreground">Hochgeladene Bilder:</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {uploadedImages.map((file, index) => (
-                            <div key={index} className="relative bg-card border border-border rounded-lg p-2 group">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center shrink-0">
-                                  <Upload className="h-4 w-4 text-primary" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium text-foreground truncate">{file.name}</p>
-                                  <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
-                                </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setUploadedImages(prev => prev.filter((_, i) => i !== index));
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex justify-end mt-3">
-                          <Button
-                            size="sm"
-                            onClick={async () => {
-                              setShowImageUpload(false);
-                              const confirmMessage: Message = {
-                                id: Date.now().toString(),
-                                text: `${uploadedImages.length} Bild(er) hochgeladen`,
-                                timestamp: new Date(),
-                                isUser: true,
-                              };
-                              setMessages(prev => [...prev, confirmMessage]);
-                              await produceEstimateAndFinalize();
-                            }}
-                          >
-                            Fertig
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {uploadedImages.length === 0 && (
-                      <div className="flex justify-end mt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            setShowImageUpload(false);
-                            const skipMessage: Message = {
-                              id: Date.now().toString(),
-                              text: 'Keine Bilder hochgeladen',
-                              timestamp: new Date(),
-                              isUser: true,
-                            };
-                            setMessages(prev => [...prev, skipMessage]);
-                            await produceEstimateAndFinalize();
-                          }}
-                        >
-                          Überspringen
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ImageUpload
+                  images={uploadedImages}
+                  onAdd={(files) => setUploadedImages((prev) => [...prev, ...files])}
+                  onRemove={(index) => setUploadedImages((prev) => prev.filter((_, i) => i !== index))}
+                  onDone={async () => {
+                    setShowImageUpload(false);
+                    const confirmMessage: Message = {
+                      id: Date.now().toString(),
+                      text: `${uploadedImages.length} Bild(er) hochgeladen`,
+                      timestamp: new Date(),
+                      isUser: true,
+                    };
+                    setMessages((prev) => [...prev, confirmMessage]);
+                    await produceEstimateAndFinalize();
+                  }}
+                  onSkip={async () => {
+                    setShowImageUpload(false);
+                    const skipMessage: Message = {
+                      id: Date.now().toString(),
+                      text: 'Keine Bilder hochgeladen',
+                      timestamp: new Date(),
+                      isUser: true,
+                    };
+                    setMessages((prev) => [...prev, skipMessage]);
+                    await produceEstimateAndFinalize();
+                  }}
+                />
               )}
             </div>
           ))}

@@ -61,12 +61,12 @@ const DamageSummary: React.FC<DamageSummaryProps> = ({ location, damageType, des
             if (desc.includes(r.key)) { component = r.comp; break; }
         }
         if (component === 'Unbekannt') {
-            if (type.includes('hagel')) component = 'Dach/Fenster';
+            if (type.includes('wasserschaden')) component = 'Keller/Leitung';
             if (type.includes('sturm')) component = 'Dach/Fassade';
         }
 
         const isSevere = /(zerstört|komplett|völlig|zerbrochen|eingedrückt|durchgebrochen|durchlöchert|wasser(austritt|eintritt)|stark undicht)/i.test(desc);
-        const isModerate = /(beschädigt|riss|risse|undicht|leck|abgedeckt|abgeplatzt)/i.test(desc) || /hagel|sturm/.test(type);
+        const isModerate = /(beschädigt|riss|risse|undicht|leck|abgedeckt|abgeplatzt)/i.test(desc) || /wasserschaden|sturm/.test(type);
         const isMinor = /(kratzer|klein|oberflächlich|leichte)/i.test(desc);
 
         let severity: 'gering' | 'mittel' | 'schwer' = 'mittel';

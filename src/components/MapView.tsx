@@ -12,10 +12,12 @@ interface MapViewProps {
 interface MapViewRef {
   flyTo: (coordinates: [number, number], zoom?: number) => void;
   toggleRain: (enabled: boolean) => void;
+  toggleSnow: (enabled: boolean) => void;
   stopRotation: () => void;
   getCenter: () => [number, number] | null;
   showRoute: (routeCoords: number[][], start: [number, number], end: [number, number]) => void;
   clearRoute: () => void;
+  orbitAt: (coordinates: [number, number], zoom?: number) => void;
 }
 
 const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
@@ -36,6 +38,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
 
   const [currentMarker, setCurrentMarker] = useState<mapboxgl.Marker | null>(null);
   const [isRainEnabled, setIsRainEnabled] = useState(false);
+  const [isSnowEnabled, setIsSnowEnabled] = useState(false);
   const routeStartMarker = useRef<mapboxgl.Marker | null>(null);
   const routeEndMarker = useRef<mapboxgl.Marker | null>(null);
   const spinEnabledRef = useRef(true);
@@ -84,6 +87,38 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
     }
   }, []);
 
+  // Snow effect helper function (reuses setRain with snow-like params)
+  const toggleSnowEffect = useCallback((enabled: boolean) => {
+    if (!map.current) return;
+    if (enabled) {
+      const zoomBasedReveal = (value: number) => {
+        return [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          11,
+          0.0,
+          13,
+          value
+        ];
+      };
+      (map.current as MapWithRain).setRain?.({
+        density: zoomBasedReveal(0.6),
+        intensity: 0.7,
+        color: '#ffffff',
+        opacity: 0.85,
+        vignette: zoomBasedReveal(0.8),
+        'vignette-color': '#7a7a7a',
+        direction: [0, 60],
+        'droplet-size': [3.5, 8.0], // chunkier flakes
+        'distortion-strength': 0.2,
+        'center-thinning': 0.1
+      });
+    } else {
+      (map.current as MapWithRain).setRain?.(null as unknown as undefined);
+    }
+  }, []);
+
   // Expose map controls to parent component
   useImperativeHandle(ref, () => ({
     flyTo: (coordinates: [number, number], zoom = 12) => {
@@ -110,9 +145,38 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
         });
       }
     },
+    orbitAt: (coordinates: [number, number], zoom = 18) => {
+      const m = map.current;
+      if (!m) return;
+      // Re-enable spin and fly to the target, rotation will start on moveend
+      spinEnabledRef.current = true;
+      // Cancel any existing rotation animation to avoid duplicates
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
+      m.easeTo({
+        center: coordinates,
+        zoom,
+        pitch: 45,
+        duration: 1600,
+        easing: (t) => t * (2 - t)
+      });
+      m.once('moveend', () => {
+        if (spinEnabledRef.current) {
+          rafId.current = requestAnimationFrame(rotateCamera);
+        }
+      });
+    },
     toggleRain: (enabled: boolean) => {
       setIsRainEnabled(enabled);
+      if (enabled) setIsSnowEnabled(false);
       toggleRainEffect(enabled);
+    },
+    toggleSnow: (enabled: boolean) => {
+      setIsSnowEnabled(enabled);
+      if (enabled) setIsRainEnabled(false);
+      toggleSnowEffect(enabled);
     },
     stopRotation: () => {
       if (rafId.current) {
@@ -196,7 +260,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
       if (routeStartMarker.current) { routeStartMarker.current.remove(); routeStartMarker.current = null; }
       if (routeEndMarker.current) { routeEndMarker.current.remove(); routeEndMarker.current = null; }
     }
-  }), [rotateCamera, toggleRainEffect]);
+  }), [rotateCamera, toggleRainEffect, toggleSnowEffect]);
 
   // Initialize map when both token is set and container is ready
   useEffect(() => {
