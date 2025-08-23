@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import MapView from '@/components/MapView';
 import LocationDropdown from '@/components/LocationDropdown';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ interface LocationResult {
 
 const Analytics = () => {
   const mapRef = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [searchValue, setSearchValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [locationResults, setLocationResults] = useState<LocationResult[]>([]);
@@ -36,15 +37,18 @@ const Analytics = () => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounced search function
-  const debouncedSearch = (searchText: string) => {
+  const debouncedSearch = useCallback((searchText: string) => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
     searchTimeoutRef.current = setTimeout(() => {
-      searchLocations(searchText);
+      if (searchText.trim()) {
+        setIsLoading(true);
+        searchLocations(searchText);
+      }
     }, 300);
-  };
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -55,14 +59,14 @@ const Analytics = () => {
     };
   }, []);
 
-  const searchLocations = async (searchText: string) => {
+  const searchLocations = useCallback(async (searchText: string) => {
     if (!searchText.trim()) {
       setLocationResults([]);
       setShowResults(false);
+      setIsLoading(false);
       return;
     }
     
-    setIsLoading(true);
     try {
       const encodedText = encodeURIComponent(searchText);
       const url = `https://api3.geo.admin.ch/rest/services/ech/SearchServer?sr=2056&searchText=${encodedText}&lang=de&type=locations`;
@@ -71,7 +75,7 @@ const Analytics = () => {
       const data = await response.json();
       
       if (data.results && data.results.length > 0) {
-        setLocationResults(data.results);
+        setLocationResults(prev => JSON.stringify(prev) !== JSON.stringify(data.results) ? data.results : prev);
         setShowResults(true);
       } else {
         setLocationResults([]);
@@ -86,7 +90,7 @@ const Analytics = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const searchBuildings = async (locationDetail: string) => {
     if (!locationDetail.trim()) return;
@@ -152,22 +156,30 @@ const Analytics = () => {
     }
   };
 
-  const handleLocationSelect = (location: LocationResult) => {
+  const handleLocationSelect = useCallback((location: LocationResult) => {
     setSelectedLocation(location);
     setSearchValue(location.attrs.detail);
     setShowResults(false);
     // Proceed with building search using the selected location
     searchBuildings(location.attrs.detail);
-  };
+  }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchValue(value);
+    
+    if (!value.trim()) {
+      setLocationResults([]);
+      setShowResults(false);
+      setIsLoading(false);
+      return;
+    }
+    
     // Use debounced search to avoid interfering with typing
     debouncedSearch(value);
-  };
+  }, [debouncedSearch]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       if (showResults && locationResults.length > 0) {
         // Select first result on Enter
@@ -176,7 +188,7 @@ const Analytics = () => {
         searchBuildings(searchValue);
       }
     }
-  };
+  }, [showResults, locationResults, handleLocationSelect, searchValue]);
 
   return (
     <div className="h-full w-full relative">
@@ -186,6 +198,7 @@ const Analytics = () => {
       <div className="absolute top-4 left-4 z-10 w-80">
         <div className="relative">
           <Input
+            ref={inputRef}
             type="text"
             placeholder="Enter location to search for dangerous buildings..."
             value={searchValue}
