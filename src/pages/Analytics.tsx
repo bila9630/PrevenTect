@@ -99,19 +99,16 @@ const Analytics = () => {
     setIsLoading(true);
     try {
       // Hardcoded address for now - can be optimized later with intelligent parser
-      const targetAddress = "Felshaldenweg 18, 3004 Bern";
+      const targetAddress = locationDetail;
+      const targetStreet = locationDetail.split(",")[0].split(" ")[0]; // e.g., "Brückenstrasse 73"
       const targetNumber = 73;
-      
-      // Search for buildings in the 3004 Bern postal area (around Felshaldenweg)
-      const nearbyStreets = ['Felshaldenweg', 'Schwarztorstrasse', 'Monbijoustrasse', 'Eigerstrasse', 'Helvetiaplatz'];
-      const streetConditions = nearbyStreets.map(street => `ADRESSE LIKE '%${street}%'`).join(' OR ');
-      const where = `(${streetConditions}) AND ADRESSE LIKE '%3004 Bern%'`;
-      const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=${encodeURIComponent(where)}&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
-      console.log("API::::::", url)
+
+      // Search for buildings on the specific street
+      const encodedStreet = encodeURIComponent(targetStreet);
+      const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=ADRESSE LIKE '%${encodedStreet}%'&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
 
       const response = await fetch(url);
       const data = await response.json();
-      console.log("DATA::::::", data)
 
       if (data.features && data.features.length > 0) {
         // Extract house numbers and sort by proximity to target number
@@ -198,12 +195,15 @@ const Analytics = () => {
     setSelectedLocation(location);
     setSearchValue(stripHtmlTags(location.attrs.label));
     setShowResults(false);
-    
+
+    console.log("Selected location:", location);
+    console.log("Selected location:", location.attrs.detail);
+
     // Center map on Brückenstrasse 73, 3005 Bern (coordinates: 7.4333, 46.9548)
     mapRef.current?.flyTo([7.4333, 46.9548], 14);
     
     // Always use the hardcoded address for building search
-    searchBuildings("Felshaldenweg 18, 3004 Bern");
+    searchBuildings(formatAddress(location.attrs.detail));
   }, []);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,6 +230,28 @@ const Analytics = () => {
       }
     }
   }, [showResults, locationResults, handleLocationSelect, searchValue]);
+
+  const formatAddress = ((input: string) => {
+    // Replace ae/oe/ue with ä/ö/ü
+    const placeInput = input
+        .replace(/ae/g, "ä")
+        .replace(/oe/g, "ö")
+        .replace(/ue/g, "ü");
+
+    // Split into parts
+    const parts = placeInput.split(/\s+/);
+
+    // Assume: [streetName, houseNumber, zip, city, ...extras]
+    const streetName = parts[0];
+    const houseNumber = parts[1];
+    const zip = parts[2];
+    const city = parts[3];
+
+    // Capitalize helpers
+    const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+    return `${capitalize(streetName)} ${houseNumber}, ${zip} ${capitalize(city)}`;
+  });
 
   return (
     <div className="h-full w-full relative">
