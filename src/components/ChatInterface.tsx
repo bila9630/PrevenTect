@@ -105,8 +105,8 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
     const advanceStep = (step: number) => {
       setMessages(prev => prev.map(m => (m.id === loaderId ? { ...m, currentStep: step } : m)));
     };
-  timers.push(window.setTimeout(() => advanceStep(1), 1500));
-  timers.push(window.setTimeout(() => advanceStep(2), 3000));
+    timers.push(window.setTimeout(() => advanceStep(1), 1500));
+    timers.push(window.setTimeout(() => advanceStep(2), 3000));
     const start = performance.now();
 
     // Build context for estimation
@@ -176,9 +176,9 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
       ].join(' ');
     }
 
-  // Ensure the loader completes its 3 steps (4.5s total)
+    // Ensure the loader completes its 3 steps (4.5s total)
     const elapsed = performance.now() - start;
-  const remaining = Math.max(0, 4500 - Math.round(elapsed));
+    const remaining = Math.max(0, 4500 - Math.round(elapsed));
     if (remaining > 0) {
       await new Promise((res) => setTimeout(res, remaining));
     }
