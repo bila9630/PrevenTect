@@ -69,10 +69,35 @@ const ChatInterface = ({ onLocationRequest, onRainToggle }: ChatInterfaceProps) 
 
 
   const handleQuickOption = (optionText: string) => {
-    setInputMessage(optionText);
     setShowQuickOptions(false);
-    // Automatically send the message
-    handleSendMessage(null, optionText);
+    
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: optionText,
+      timestamp: new Date(),
+      isUser: true,
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    // Handle specific responses for quick options
+    let botResponse = '';
+    if (optionText === 'Schaden melden') {
+      botResponse = 'Wo wohnst du?';
+    } else if (optionText === 'Schadensimulation') {
+      botResponse = 'Ich kann dir bei der Schadensimulation helfen. Welche Art von Schaden möchtest du simulieren?';
+    }
+
+    // Add bot response
+    const botMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      text: botResponse,
+      timestamp: new Date(),
+      isUser: false,
+    };
+
+    setMessages(prev => [...prev, botMessage]);
   };
 
   const handleSendMessage = async (e: React.FormEvent | null, messageText?: string) => {
