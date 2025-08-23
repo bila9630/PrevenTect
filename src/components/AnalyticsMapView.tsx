@@ -164,13 +164,29 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
     // Effect to update markers when risk mode changes
     useEffect(() => {
-        // clear selection to avoid mismatched scaling
-        setSelectedBuilding(null);
         if (markersData.length > 0) {
-            // Clear existing markers
+            // Store current selection state
+            const currentSelection = selectedBuilding;
+            
+            // Clear existing markers but preserve state
             markers.forEach(marker => marker.remove());
+            
             // Recreate with new coloring
             createMarkers(markersData);
+            
+            // Restore selection after markers are recreated
+            if (currentSelection) {
+                // Small delay to ensure markers are created
+                setTimeout(() => {
+                    const markerEl = mapContainer.current?.querySelector(`[data-id="${currentSelection.markerId}"]`) as HTMLDivElement;
+                    if (markerEl) {
+                        const innerEl = markerEl.querySelector('div') as HTMLDivElement | null;
+                        if (innerEl) innerEl.style.transform = 'scale(1.5)';
+                        markerEl.style.zIndex = '1000';
+                        markerEl.setAttribute('data-selected', 'true');
+                    }
+                }, 50);
+            }
         }
     }, [riskMode]);
 
@@ -526,7 +542,9 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         
                         {selectedBuilding.riskData && (
                             <div>
-                                <h4 className="font-medium text-foreground mb-1">Water Damage Risk</h4>
+                        {riskMode === 'water' ? (
+                            <div>
+                                <h4 className="font-medium text-foreground mb-1">Risiko Wasserschaden</h4>
                                 <div className="flex items-center space-x-2">
                                     {(() => {
                                         const value = selectedBuilding.riskData.HOCHWASSER_FLIESSGEWAESSER;
@@ -547,6 +565,17 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                     })()}
                                 </div>
                             </div>
+                        ) : (
+                            <div>
+                                <h4 className="font-medium text-foreground mb-1">Risiko Sturm</h4>
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm text-muted-foreground">
+                                        {selectedBuilding.riskData.STURM_TEXT || 'N/A'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -564,7 +593,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                         }`}
                     >
                         <Droplets size={16} />
-                        <span className="text-xs font-medium">Water</span>
+                        <span className="text-xs font-medium">Wasser</span>
                     </button>
                     
                     <button
