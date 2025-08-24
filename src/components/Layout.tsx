@@ -45,7 +45,7 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="h-screen bg-gradient-space overflow-hidden">
       {/* Header with branding and navigation */}
-      <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-border bg-background/50 backdrop-blur-sm">
+      <header className="h-16 flex items-center px-4 md:px-6 border-b border-border bg-background/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           {/* Mobile Menu Button */}
           <div className="md:hidden">
@@ -70,12 +70,12 @@ const Layout = ({ children }: LayoutProps) => {
           <h1 className="text-lg md:text-xl font-bold text-foreground tracking-wide">
             PrevenTect
           </h1>
-        </div>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-4">
-          <NavigationLinks />
-        </nav>
+          {/* Desktop Navigation - positioned next to title */}
+          <nav className="hidden md:flex items-center gap-4">
+            <NavigationLinks />
+          </nav>
+        </div>
       </header>
 
       {/* Page content */}
