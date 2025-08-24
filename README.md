@@ -2,7 +2,7 @@
 
 ## Projektinformationen
 
-**Anwendung ist deployt**: http://13.60.92.130:8080/
+**Anwendung ist deployt**: http://ec2-13-51-197-154.eu-north-1.compute.amazonaws.com/
 
 ## Video-Demo
 [▶ Video-Demo ansehen (MP4)](./screencast.mp4)
