@@ -1,9 +1,13 @@
 import React, { useState, useRef } from 'react';
+import { MessageCircle } from 'lucide-react';
 import MapView from '@/components/MapView';
 import ChatInterface from '@/components/ChatInterface';
+import { Button } from '@/components/ui/button';
+import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 
 const Index = () => {
   const [mapboxToken, setMapboxToken] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
   const mapRef = useRef<{
     flyTo: (coordinates: [number, number], zoom?: number) => void;
     toggleRain: (enabled: boolean) => void;
@@ -125,18 +129,66 @@ const Index = () => {
   };
 
   return (
-    <div className="h-full flex">
-      {/* Map Section */}
-      <div className="flex-1 p-4">
-        <div className="h-full bg-background/80 backdrop-blur-sm rounded-lg border border-border shadow-2xl">
-          <MapView ref={mapRef} onTokenSet={setMapboxToken} />
+    <div className="h-full relative">
+      {/* Mobile Layout */}
+      <div className="md:hidden h-full">
+        {/* Full-width Map on Mobile */}
+        <div className="h-full p-2">
+          <div className="h-full bg-background/80 backdrop-blur-sm rounded-lg border border-border shadow-2xl relative">
+            <MapView ref={mapRef} onTokenSet={setMapboxToken} />
+
+            {/* Mobile Chat Trigger Button */}
+            <Drawer open={chatOpen} onOpenChange={setChatOpen}>
+              <DrawerTrigger asChild>
+                <Button
+                  size="lg"
+                  className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg h-14 w-14 p-0"
+                  aria-label="Open chat"
+                >
+                  <MessageCircle className="h-6 w-6" />
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent className="h-[85vh] flex flex-col">
+                <DrawerHeader className="pb-2 flex-shrink-0">
+                  <DrawerTitle className="text-left">Chat Assistant</DrawerTitle>
+                </DrawerHeader>
+                <div className="flex-1 min-h-0 px-4 pb-4">
+                  <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
+                    <ChatInterface
+                      onLocationRequest={handleLocationRequest}
+                      onRainToggle={handleRainToggle}
+                      onRequestPartners={handleRequestPartners}
+                      onOrbitBuilding={handleOrbitBuilding}
+                      onSnowToggle={handleSnowToggle}
+                    />
+                  </div>
+                </div>
+              </DrawerContent>
+            </Drawer>
+          </div>
         </div>
       </div>
 
-      {/* Chat Section */}
-      <div className="flex-1 p-4">
-        <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
-          <ChatInterface onLocationRequest={handleLocationRequest} onRainToggle={handleRainToggle} onRequestPartners={handleRequestPartners} onOrbitBuilding={handleOrbitBuilding} onSnowToggle={handleSnowToggle} />
+      {/* Desktop Layout */}
+      <div className="hidden md:flex h-full">
+        {/* Map Section */}
+        <div className="flex-1 p-4">
+          <div className="h-full bg-background/80 backdrop-blur-sm rounded-lg border border-border shadow-2xl">
+            <MapView ref={mapRef} onTokenSet={setMapboxToken} />
+          </div>
+        </div>
+
+        {/* Chat Section */}
+        <div className="flex-1 p-4">
+          <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
+            <ChatInterface
+              onLocationRequest={handleLocationRequest}
+              onRainToggle={handleRainToggle}
+              onRequestPartners={handleRequestPartners}
+              onOrbitBuilding={handleOrbitBuilding}
+              onSnowToggle={handleSnowToggle}
+            />
+          </div>
         </div>
       </div>
     </div>
