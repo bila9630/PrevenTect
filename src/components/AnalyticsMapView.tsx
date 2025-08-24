@@ -819,9 +819,9 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             {/* Risk Information Panel */}
             {selectedBuilding && (
-                <div className="absolute top-4 right-4 w-96 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-4 shadow-lg z-10">
+                <div className="absolute top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-background/95 backdrop-blur-sm rounded-lg border border-border p-3 md:p-4 shadow-lg z-10">
                     <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-semibold text-foreground">Risks</h3>
+                        <h3 className="text-base md:text-lg font-semibold text-foreground">Risks</h3>
                         <button
                             onClick={() => setSelectedBuilding(null)}
                             className="text-muted-foreground hover:text-foreground text-sm p-1"
@@ -833,7 +833,7 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                     <div className="space-y-3">
                         <div>
                             <h4 className="font-medium text-foreground mb-1">Address</h4>
-                            <p className="text-sm text-muted-foreground">{selectedBuilding.address}</p>
+                            <p className="text-sm text-muted-foreground truncate">{selectedBuilding.address}</p>
                         </div>
 
                         {selectedBuilding.riskData && (
@@ -883,10 +883,10 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
 
             {/* Claims Panel - bottom left */}
             {selectedBuilding && showClaimsPanel && claims && claims.length > 0 && (
-                <div className="absolute bottom-4 left-4 z-10 w-96">
+                <div className="absolute bottom-4 left-4 right-4 md:left-4 md:right-auto md:w-96 z-10">
                     <Card className="w-full bg-background/90 backdrop-blur-sm border-border shadow-lg">
-                        <CardHeader className="pb-2 pt-3 flex flex-row items-center justify-between">
-                            <CardTitle className="text-base font-semibold text-foreground">Schadenmeldungen</CardTitle>
+                        <CardHeader className="pb-2 pt-2 md:pt-3 px-3 md:px-6 flex flex-row items-center justify-between">
+                            <CardTitle className="text-sm md:text-base font-semibold text-foreground">Schadenmeldungen</CardTitle>
                             <div className="flex items-center gap-2">
                                 <Badge variant="secondary" className="text-xs">
                                     {claimsLoading ? '...' : (claims?.length ?? 0)}
@@ -901,14 +901,14 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                                 </button>
                             </div>
                         </CardHeader>
-                        <CardContent className="pt-2 space-y-3">
+                        <CardContent className="pt-2 px-3 md:px-6 space-y-3">
                             {/* Header Info */}
                             <div className="text-xs text-muted-foreground">
                                 <div className="truncate">
-                                    Adresse: <span className="text-foreground">{selectedBuilding.address}</span>
+                                    <span className="hidden sm:inline">Adresse: </span><span className="text-foreground">{selectedBuilding.address}</span>
                                 </div>
                                 {selectedBuilding.riskData?.GWR_EGID && (
-                                    <div>EGID: <span className="font-mono">{String(selectedBuilding.riskData.GWR_EGID)}</span></div>
+                                    <div className="truncate">EGID: <span className="font-mono">{String(selectedBuilding.riskData.GWR_EGID)}</span></div>
                                 )}
                             </div>
 
@@ -929,11 +929,11 @@ const AnalyticsMapView = forwardRef<AnalyticsMapViewRef, AnalyticsMapViewProps>(
                             )}
 
                             {!claimsLoading && !claimsError && claims && claims.length > 0 && (
-                                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                <div className="space-y-2 max-h-48 md:max-h-64 overflow-y-auto pr-1">
                                     {claims.map((c) => (
                                         <div
                                             key={c.id}
-                                            className="rounded-md border border-border p-3 bg-card/60 cursor-pointer hover:border-accent/60"
+                                            className="rounded-md border border-border p-2 md:p-3 bg-card/60 cursor-pointer hover:border-accent/60"
                                             onClick={() => {
                                                 setSelectedClaim(c);
                                                 setViewerOpen(true);
