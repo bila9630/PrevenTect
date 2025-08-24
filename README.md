@@ -65,7 +65,7 @@ Wir haben folgende technische Grundsätze gefällt:
 
 - **Superbase**: BaaS um die Kundendaten abzuspeichern
 
-- **AWS**: Deployment und Hosting der Anwendung
+- **Vercel**: Deployment und Hosting der Anwendung
 
 - **AI Copilot (lovable.ai)**: zur Unterstützung bei der Entwicklung und Codegenerierung
 
@@ -79,7 +79,7 @@ Wir haben die API genutzt, die uns GVB gegeben hat. Auch brauchen wir für unser
 Was ist aus technischer Sicht besonders cool an eurer Lösung?
 
 Hoher Visualisierungsgrad: Risiken sind auf einen Blick sichtbar, statt in Tabellen versteckt zu sein.
-Einfache Deploybarkeit: Durch die gewählte Architektur kann die Lösung einfach erweitert oder in bestehende Systeme integriert werden (die Umsetzung bei uns folgte auf AWS).
+Einfache Deploybarkeit: Durch die gewählte Architektur kann die Lösung einfach erweitert oder in bestehende Systeme integriert werden (die Umsetzung bei uns folgte auf Vercel).
 
 ## Abgrenzung / Offene Punkte
 
