@@ -13,10 +13,10 @@ Wenn du das Projekt lokal mit deiner eigenen IDE bearbeiten möchtest, gehe wie 
 
 ```sh
 # Schritt 1: Klone das Repository mit der Git-URL des Projekts.
-git clone <YOUR_GIT_URL>
+git clone git@github.com:bila9630/chat-map-together.git
 
 # Schritt 2: Wechsle in das Projektverzeichnis.
-cd <YOUR_PROJECT_NAME>
+cd chat-map-together
 
 # Schritt 3: Installiere die benötigten Abhängigkeiten.
 npm i
