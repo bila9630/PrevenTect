@@ -9,7 +9,7 @@
 There are several ways of editing your application.
 
 ## Video-Demo
-<video controls src="baernHaeckt25_taffeGiraffe_gvb_prevenTect_ohneVoice_compressed.mp4" title="Title"></video>
+[▶ Watch the video demo (MP4)](./baernHaeckt25_taffeGiraffe_gvb_prevenTect_ohneVoice_compressed.mp4)
 
 **Use your preferred IDE**
 
