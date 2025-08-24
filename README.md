@@ -5,7 +5,7 @@
 **Anwendung ist deployt**: http://13.60.92.130:8080/
 
 ## Video-Demo
-[▶ Video-Demo ansehen (MP4)](./dokumentation/baernHaeckt25_taffeGiraffe_gvb_prevenTect_ohneVoice_compressed.mp4)
+[▶ Video-Demo ansehen (MP4)](./screencast.mp4)
 
 **Anwendung lokal starten**
 
