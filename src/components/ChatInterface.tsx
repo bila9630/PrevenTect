@@ -100,9 +100,15 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
   }, [messages]);
 
   useEffect(() => {
-    // Load saved API key from localStorage
-    const k = localStorage.getItem('openai_api_key');
-    if (k) setApiKey(k);
+    // Load saved API key from localStorage or environment variables
+    const localKey = localStorage.getItem('openai_api_key');
+    const envKey = import.meta.env.VITE_OPENAI_API_KEY;
+
+    if (localKey) {
+      setApiKey(localKey);
+    } else if (envKey) {
+      setApiKey(envKey);
+    }
   }, []);
 
   const saveApiKey = () => {

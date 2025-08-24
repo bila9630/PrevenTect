@@ -30,8 +30,13 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ onTokenSet }, ref) => {
   // Load cached token on component mount
   useEffect(() => {
     const cachedToken = localStorage.getItem('mapbox-token');
+    const envToken = import.meta.env.VITE_MAPBOX_KEY;
+
     if (cachedToken) {
       setMapboxToken(cachedToken);
+      setIsTokenSet(true);
+    } else if (envToken) {
+      setMapboxToken(envToken);
       setIsTokenSet(true);
     }
   }, []);

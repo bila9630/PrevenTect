@@ -9,6 +9,13 @@ import { Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { stripHtmlTags } from '@/lib/utils';
 
+// Helper function to get mapbox token from localStorage or environment variables
+const getMapboxToken = (): string | null => {
+  const cachedToken = localStorage.getItem('mapbox-token');
+  const envToken = import.meta.env.VITE_MAPBOX_KEY;
+  return cachedToken || envToken || null;
+};
+
 interface BuildingData {
   GWR_EGID: number;
   ADRESSE: string;
@@ -185,7 +192,7 @@ const Analytics = () => {
                 const address = building.attributes.ADRESSE;
                 // Add "Bern" to ensure we get Bern addresses and use proximity to Bern center
                 const searchQuery = `${address}, Bern`;
-                const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${localStorage.getItem('mapbox-token')}&proximity=7.4474,46.9480&bbox=7.3000,46.8000,7.6000,47.1000`;
+                const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${getMapboxToken()}&proximity=7.4474,46.9480&bbox=7.3000,46.8000,7.6000,47.1000`;
                 const geocodeResponse = await fetch(geocodeUrl);
                 const geocodeData = await geocodeResponse.json();
 
