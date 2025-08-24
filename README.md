@@ -5,7 +5,7 @@
 **URL**: https://preventect.lovable.app/
 
 ## Video-Demo
-[▶ Video-Demo ansehen (MP4)](./baernHaeckt25_taffeGiraffe_gvb_prevenTect_ohneVoice_compressed.mp4)
+[▶ Video-Demo ansehen (MP4)](./dokumentation/baernHaeckt25_taffeGiraffe_gvb_prevenTect_ohneVoice_compressed.mp4)
 
 **Anwendung lokal starten**
 Wenn du das Projekt lokal mit deiner eigenen IDE bearbeiten möchtest, gehe wie folgt vor:
@@ -48,6 +48,8 @@ Wir haben folgende technische Grundsätze gefällt:
 
 ## Technischer Aufbau
 
+![Architekturübersicht](./dokumentation/architektur.png)
+
 ### Welche Komponenten und Frameworks habt ihr verwendet und wozu und wie werden diese eingesetzt?
 
 - **React**: Library, für die Frontend-Entwicklung, um eine performante und modulare Web-App zu erstellen
@@ -87,3 +89,7 @@ Wir haben uns auf wenige, qualitativ hochwertige Daten konzentriert, um die Mach
 
 ### Offene Punkte:
 Mit mehr Zeit und einer vertieften Ausarbeitung wäre es zudem denkbar, auch die Materialbeschaffenheit der Liegenschaften in die Analyse zu integrieren, um die Risikoeinschätzung noch präziser und praxisnäher zu gestalten
+
+Die technische Dokumentation lässt sich auch noch hier finden:
+
+[Technische Dokumentation (DOCX)](./dokumentation/BernHackt_Tech%20Jury%20Documentation_Taffe%20Giraffen.docx)
