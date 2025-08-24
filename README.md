@@ -5,7 +5,7 @@
 **Anwendung ist deployt**: http://13.60.92.130:8080/
 
 ## Video-Demo
-[▶ Video-Demo ansehen (MP4)](./dokumentation/baernHaeckt25_taffeGiraffe_gvb_prevenTect_ohneVoice_compressed.mp4)
+[▶ Video-Demo ansehen (MP4)](./screencast.mp4)
 
 **Anwendung lokal starten**
 
@@ -13,10 +13,10 @@ Wenn du das Projekt lokal mit deiner eigenen IDE bearbeiten möchtest, gehe wie 
 
 ```sh
 # Schritt 1: Klone das Repository mit der Git-URL des Projekts.
-git clone <YOUR_GIT_URL>
+git clone git@github.com:bila9630/chat-map-together.git
 
 # Schritt 2: Wechsle in das Projektverzeichnis.
-cd <YOUR_PROJECT_NAME>
+cd chat-map-together
 
 # Schritt 3: Installiere die benötigten Abhängigkeiten.
 npm i
