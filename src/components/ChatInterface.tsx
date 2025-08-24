@@ -11,6 +11,7 @@ import EstimateResult from './EstimateResult';
 import DamageSummary from './DamageSummary';
 import RepairRecommendations from './RepairRecommendations';
 import ImageUpload from './ImageUpload';
+import DamageOptionButton from './DamageOptionButton';
 import { useToast } from '@/components/ui/use-toast';
 import { useOpenAI } from '@/hooks/useOpenAI';
 import { format } from 'date-fns';
@@ -354,28 +355,28 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
     // Start background image upload to Supabase without blocking UI
     const uploadImagesAsync = async (): Promise<string[]> => {
       if (uploadedImages.length === 0) return [];
-      
+
       try {
         const uploadPromises = uploadedImages.map(async (file, index) => {
           const fileName = `${claimId}-${index}-${file.name}`;
           const { error } = await supabase.storage
             .from('claims-uploads')
             .upload(fileName, file);
-          
+
           if (error) throw error;
           return fileName;
         });
 
         const uploadedFilePaths = await Promise.all(uploadPromises);
-        toast({ 
-          description: `${uploadedImages.length} Bild(er) erfolgreich hochgeladen` 
+        toast({
+          description: `${uploadedImages.length} Bild(er) erfolgreich hochgeladen`
         });
         return uploadedFilePaths;
       } catch (error) {
         console.error('Upload error:', error);
-        toast({ 
-          description: 'Bilder-Upload fehlgeschlagen', 
-          variant: 'destructive' 
+        toast({
+          description: 'Bilder-Upload fehlgeschlagen',
+          variant: 'destructive'
         });
         return [];
       }
@@ -384,7 +385,7 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
     // Fetch GWR_EGID from webgis API
     const fetchGwrEgid = async (): Promise<string | null> => {
       if (!selectedLocation) return null;
-      
+
       try {
         // Extract street name from location
         const locationParts = selectedLocation.split(',');
@@ -393,16 +394,16 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
 
         const encodedStreet = encodeURIComponent(targetStreet);
         const url = `/api/webgis/server/rest/services/natur/GEBAEUDE_NATURGEFAHREN_BE_DE_FR/MapServer/1/query?where=ADRESSE LIKE '%${encodedStreet}%'&outFields=GWR_EGID,ADRESSE,STURM,STURM_TEXT,HOCHWASSER_FLIESSGEWAESSER,FLIESSGEWAESSER_TEXT_DE&returnGeometry=false&f=json`;
-        
+
         const response = await fetch(url);
         const data = await response.json();
-        
+
         if (data.features && data.features.length > 0) {
           // Return the first matching GWR_EGID as string
           const gwrEgid = data.features[0].attributes.GWR_EGID;
           return gwrEgid ? gwrEgid.toString() : null;
         }
-        
+
         return null;
       } catch (error) {
         console.error('Error fetching GWR_EGID:', error);
@@ -415,10 +416,10 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
       try {
         // Upload images first and get their paths
         const imagePaths = await uploadImagesAsync();
-        
+
         // Fetch GWR_EGID from webgis API
         const gwrEgid = await fetchGwrEgid();
-        
+
         const { error } = await supabase
           .from('claims')
           .insert({
@@ -433,15 +434,15 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
           });
 
         if (error) throw error;
-        
-        toast({ 
-          description: 'Schadensfall mit Bildern erfolgreich gespeichert' 
+
+        toast({
+          description: 'Schadensfall mit Bildern erfolgreich gespeichert'
         });
       } catch (error) {
         console.error('Save claim error:', error);
-        toast({ 
-          description: 'Speichern des Schadensfalls fehlgeschlagen', 
-          variant: 'destructive' 
+        toast({
+          description: 'Speichern des Schadensfalls fehlgeschlagen',
+          variant: 'destructive'
         });
       }
     };
@@ -992,42 +993,22 @@ const ChatInterface = ({ onLocationRequest, onRainToggle, onRequestPartners, onO
 
               {/* Damage cause options */}
               {!message.isUser && message.id === lastBotMessageId && showDamageOptions && (
-                <div className="mt-3 ml-8 grid grid-cols-3 gap-3 max-w-md">
-                  <button
-                    onClick={() => handleDamageOption('Wasserschaden')}
-                    className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <div className="text-primary text-xl">🌨️</div>
-                      </div>
-                      <span className="text-sm font-medium text-foreground">Wasserschaden</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleDamageOption('Sturmwind')}
-                    className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <div className="text-primary text-xl">💨</div>
-                      </div>
-                      <span className="text-sm font-medium text-foreground">Sturmwind</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleDamageOption('Andere')}
-                    className="p-4 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors text-center group"
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <div className="text-primary text-xl">⚡</div>
-                      </div>
-                      <span className="text-sm font-medium text-foreground">Andere</span>
-                    </div>
-                  </button>
+                <div className="mt-3 ml-8 grid grid-cols-3 gap-2 max-w-sm">
+                  <DamageOptionButton
+                    damageType="Wasserschaden"
+                    icon="🌨️"
+                    onClick={handleDamageOption}
+                  />
+                  <DamageOptionButton
+                    damageType="Sturmwind"
+                    icon="💨"
+                    onClick={handleDamageOption}
+                  />
+                  <DamageOptionButton
+                    damageType="Andere"
+                    icon="⚡"
+                    onClick={handleDamageOption}
+                  />
                 </div>
               )}
 
