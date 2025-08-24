@@ -8,6 +8,7 @@
 [▶ Video-Demo ansehen (MP4)](./dokumentation/baernHaeckt25_taffeGiraffe_gvb_prevenTect_ohneVoice_compressed.mp4)
 
 **Anwendung lokal starten**
+
 Wenn du das Projekt lokal mit deiner eigenen IDE bearbeiten möchtest, gehe wie folgt vor:
 
 ```sh
