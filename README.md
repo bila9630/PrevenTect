@@ -2,7 +2,7 @@
 
 ## Projektinformationen
 
-**URL**: https://preventect.lovable.app/
+**Anwendung ist deployt**: http://13.60.92.130:8080/
 
 ## Video-Demo
 [▶ Video-Demo ansehen (MP4)](./dokumentation/baernHaeckt25_taffeGiraffe_gvb_prevenTect_ohneVoice_compressed.mp4)
