@@ -1,7 +1,11 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import AnalyticsMapView from '@/components/AnalyticsMapView';
 import LocationDropdown from '@/components/LocationDropdown';
+import RiskFilter from '@/components/RiskFilter';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { stripHtmlTags } from '@/lib/utils';
 
@@ -32,6 +36,22 @@ interface AnalyticsMapViewRef {
   addMarkers: (coordinates: Array<{ lat: number; lng: number; address: string }>) => void;
   clearMarkers: () => void;
   focusOnLocation: (coordinates: [number, number]) => void;
+  getFilterState: () => {
+    riskMode: 'water' | 'wind';
+    waterThreshold: number[];
+    windThreshold: number[];
+    selectedBuilding: {
+      address: string;
+      riskData?: any;
+      markerId: string;
+    } | null;
+    markersData: any[];
+  };
+  setFilterState: (state: {
+    riskMode?: 'water' | 'wind';
+    waterThreshold?: number[];
+    windThreshold?: number[];
+  }) => void;
 }
 
 const Analytics = () => {
@@ -42,7 +62,29 @@ const Analytics = () => {
   const [locationResults, setLocationResults] = useState<LocationResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<LocationResult | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterState, setFilterState] = useState({
+    riskMode: 'water' as 'water' | 'wind',
+    waterThreshold: [1],
+    windThreshold: [25],
+    selectedBuilding: null as any,
+    markersData: [] as any[]
+  });
   const searchTimeoutRef = useRef<number | null>(null);
+
+  // Update filter state when map state changes
+  useEffect(() => {
+    const updateFilterState = () => {
+      if (mapRef.current?.getFilterState) {
+        const mapState = mapRef.current.getFilterState();
+        setFilterState(mapState);
+      }
+    };
+
+    // Check every 100ms for state changes (could be optimized with events)
+    const interval = setInterval(updateFilterState, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   // Debounced search function
   const debouncedSearch = useCallback((searchText: string) => {
@@ -260,8 +302,8 @@ const Analytics = () => {
     <div className="h-full w-full relative">
       <AnalyticsMapView ref={mapRef} />
 
-      {/* Search Bar */}
-      <div className="absolute top-4 left-4 z-10 w-80">
+      {/* Search Bar - responsive positioning */}
+      <div className="absolute top-4 left-4 z-10 w-80 max-w-[calc(100vw-2rem)]">
         <div className="relative">
           <Input
             ref={inputRef}
@@ -284,6 +326,50 @@ const Analytics = () => {
           locationResults={locationResults}
           onLocationSelect={handleLocationSelect}
         />
+      </div>
+
+      {/* Mobile Filter Trigger Button */}
+      <div className="md:hidden">
+        <Drawer open={filterOpen} onOpenChange={setFilterOpen}>
+          <DrawerTrigger asChild>
+            <Button
+              size="lg"
+              className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg h-14 w-14 p-0"
+              aria-label="Open filter"
+            >
+              <Filter className="h-6 w-6" />
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent className="h-[85vh] flex flex-col">
+            <DrawerHeader className="pb-2 flex-shrink-0">
+              <DrawerTitle className="text-left">Risiko Filter</DrawerTitle>
+            </DrawerHeader>
+            <div className="flex-1 min-h-0 px-4 pb-4">
+              <div className="h-full bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-2xl overflow-hidden">
+                <RiskFilter
+                  riskMode={filterState.riskMode}
+                  setRiskMode={(mode) => {
+                    mapRef.current?.setFilterState({ riskMode: mode });
+                    setFilterState(prev => ({ ...prev, riskMode: mode }));
+                  }}
+                  waterThreshold={filterState.waterThreshold}
+                  setWaterThreshold={(threshold) => {
+                    mapRef.current?.setFilterState({ waterThreshold: threshold });
+                    setFilterState(prev => ({ ...prev, waterThreshold: threshold }));
+                  }}
+                  windThreshold={filterState.windThreshold}
+                  setWindThreshold={(threshold) => {
+                    mapRef.current?.setFilterState({ windThreshold: threshold });
+                    setFilterState(prev => ({ ...prev, windThreshold: threshold }));
+                  }}
+                  selectedBuilding={filterState.selectedBuilding}
+                  markersData={filterState.markersData}
+                  showCard={false}
+                />
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
       </div>
     </div>
   );
