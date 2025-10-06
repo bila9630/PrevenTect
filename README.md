@@ -26,6 +26,16 @@ npm run dev
 ```
 
 Erforderlich sind lediglich eine installierte Node.js- und npm-Umgebung sowie API-Schlüssel für Mapbox und OpenAI.
+Erstelle eine .env Datei und füge
+```
+VITE_SUPABASE_PROJECT_ID=dein_supabase_project_id
+VITE_SUPABASE_PUBLISHABLE_KEY=dein_supabase_publishable_key
+VITE_SUPABASE_URL=dein_supabase_url
+VITE_OPENAI_API_KEY=dein_openai_api_key
+VITE_MAPBOX_KEY=dein_mapbox_schluessel
+```
+ein.	
+
 
 ## Ausgangslage
 
