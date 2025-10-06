@@ -2,8 +2,6 @@
 
 ## Projektinformationen
 
-**Anwendung ist deployt**: http://ec2-13-51-197-154.eu-north-1.compute.amazonaws.com/
-
 ## Video-Demo
 [▶ Video-Demo ansehen (MP4)](./screencast.mp4)
 
@@ -13,10 +11,10 @@ Wenn du das Projekt lokal mit deiner eigenen IDE bearbeiten möchtest, gehe wie 
 
 ```sh
 # Schritt 1: Klone das Repository mit der Git-URL des Projekts.
-git clone git@github.com:bila9630/chat-map-together.git
+git clone git@github.com:bila9630/preventect.git
 
 # Schritt 2: Wechsle in das Projektverzeichnis.
-cd chat-map-together
+cd preventect
 
 # Schritt 3: Installiere die benötigten Abhängigkeiten.
 npm i
